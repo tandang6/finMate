@@ -19,6 +19,95 @@
       - **(NEW)** Naver Developers API Key (검색 API - Client ID/Secret)
   - **운영체제:** Windows 기준 설명 (Mac/Linux 명령어는 별도 표기)
 
+# 🔑 [FinMate] API 키 발급 가이드
+
+프로젝트 실행을 위해서는 **Google(AI), Naver(뉴스), 한국은행(경제지표)** 총 3곳의 API 키가 필요합니다.
+발급받은 키는 `.env` 파일에 복사해서 넣어야 합니다.
+
+-----
+
+## 1\. Google Gemini API Key (AI 챗봇용)
+
+AI 챗봇, 뉴스 요약, 도미노 분석 기능에 사용됩니다.
+
+  * **발급 사이트:** [Google AI Studio (Get API Key)](https://aistudio.google.com/app/apikey)
+  * **비용:** 테스트용(Free Tier)은 무료입니다. (분당 요청 제한 있음)
+  * **발급 순서:**
+    1.  위 링크 접속 후 Google 계정으로 로그인.
+    2.  왼쪽 상단 **[Create API key]** 버튼 클릭.
+    3.  **'Create API key in new project'** 선택.
+    4.  생성된 `API Key`를 복사합니다.
+  * **`.env` 설정:**
+    ```properties
+    GEMINI_API_KEY=복사한_키_붙여넣기
+    ```
+
+-----
+
+## 2\. Naver Search API (뉴스 검색용)
+
+'오늘의 시장 날씨' 기능에서 최신 뉴스를 검색할 때 사용됩니다.
+
+  * **발급 사이트:** [Naver Developers (Application 등록)](https://www.google.com/search?q=https://developers.naver.com/apps/%23/register)
+  * **발급 순서:**
+    1.  위 링크 접속 후 네이버 로그인.
+    2.  **애플리케이션 이름:** `FinMate` (자유롭게 입력).
+    3.  **사용 API:** **[검색 (Search)]** 을 반드시 선택하세요. (필수)
+    4.  **비로그인 오픈 API 서비스 환경:**
+          * **[WEB 설정]** 선택.
+          * **웹 서비스 URL:** `http://localhost:3000` 입력. (로컬 개발용)
+    5.  **[등록하기]** 클릭.
+    6.  생성된 애플리케이션 정보에서 **Client ID**와 **Client Secret**을 확인합니다.
+  * **`.env` 설정:**
+    ```properties
+    NAVER_CLIENT_ID=복사한_Client_ID
+    NAVER_CLIENT_SECRET=복사한_Client_Secret
+    ```
+
+-----
+
+## 3\. 한국은행 ECOS API (금리/주가 데이터용)
+
+기준금리, KOSPI, 환율 등 정확한 통계 데이터를 가져올 때 사용됩니다.
+
+  * **발급 사이트:** [한국은행 ECOS Open API (인증키 신청)](https://www.google.com/search?q=https://ecos.bok.or.kr/api/%23/AuthKeyApply)
+  * **발급 순서:**
+    1.  위 링크 접속.
+    2.  약관 동의 후 **신청서 작성** (사용 목적은 '학습용' 또는 '개발 테스트' 등으로 작성).
+    3.  **[신청]** 버튼 클릭.
+    4.  신청 즉시 화면에 키가 나오거나, 메일로 발송됩니다.
+  * **`.env` 설정:**
+    ```properties
+    ECOS_AUTH_KEY=복사한_인증키
+    ```
+
+-----
+
+## 📂 최종 `.env` 파일 예시
+
+위에서 받은 키들을 모아 `main.py`가 있는 폴더에 `.env` 파일을 만들고 아래처럼 채워주세요.
+
+```properties
+# ==========================================
+# 1. Google Gemini API
+# ==========================================
+GEMINI_API_KEY=AIzaSyD......(내용생략)
+MODEL_NAME=gemini-2.0-flash
+
+# ==========================================
+# 2. Naver Developers API (News)
+# ==========================================
+NAVER_CLIENT_ID=XyZb......
+NAVER_CLIENT_SECRET=AbCd......
+
+# ==========================================
+# 3. 한국은행 ECOS API
+# ==========================================
+ECOS_AUTH_KEY=123456......
+```
+
+> **⚠️ 주의:** 이 `.env` 파일은 타인에게 노출되면 안 되므로 GitHub 등에 업로드하지 마세요\! (`.gitignore`에 추가 필수)
+
 ## 3\. 프로젝트 폴더 구조
 
 ```text
