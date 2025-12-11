@@ -6,6 +6,8 @@ import {
   Sun, TrendingUp, Bell, Search, User, 
   ArrowRight, Brain, Calendar, ShieldAlert, Zap, LogOut, ChevronRight, CheckCircle
 } from 'lucide-react';
+import { Routes, Route, Link } from 'react-router-dom';
+import EconomicCalendarPage from './pages/calendar';
 
 // --- [DATA] 목업 데이터 (백엔드 없이 작동하기 위한 가짜 데이터) ---
 
@@ -105,12 +107,12 @@ const Header = ({ user, onLogout }) => {
   const [showMenu, setShowMenu] = useState(false);
   return (
     <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50 px-6 py-3 flex items-center justify-between shadow-sm">
-      <div className="flex items-center gap-2 cursor-pointer group">
+      <Link to="/" className="flex items-center gap-2 cursor-pointer group">
         <div className="bg-indigo-600 w-9 h-9 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
           <TrendingUp className="text-white w-5 h-5" />
         </div>
         <span className="text-xl font-bold text-gray-800 tracking-tight group-hover:text-indigo-600 transition-colors">Fin-Mate</span>
-      </div>
+      </Link>
       
       <div className="hidden md:flex items-center bg-gray-100/80 rounded-full px-5 py-2.5 w-96 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-100 transition-all border border-transparent focus-within:border-indigo-200">
         <Search className="w-4 h-4 text-gray-400 mr-2" />
@@ -118,6 +120,14 @@ const Header = ({ user, onLogout }) => {
       </div>
 
       <div className="flex items-center gap-4">
+		<Link
+          to="/calendar"
+          className="hidden md:inline-flex items-center text-sm font-medium 
+                     text-gray-600 hover:text-indigo-600 transition-colors"
+        >
+          <Calendar className="w-4 h-4 mr-1" />
+          주요 경제 일정
+        </Link>
         <button className="relative p-2 hover:bg-gray-100 rounded-full transition-colors group">
           <Bell className="w-5 h-5 text-gray-600 group-hover:text-indigo-600 transition-colors" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
@@ -392,74 +402,10 @@ const AIMentorChat = () => {
   );
 };
 
-
-// --- [MAIN APP] 전체 앱 구조 ---
-const FinMateApp = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState(null);
-
-  // 로그인 상태 관리
-  const handleLogin = (userInfo) => { setIsLoggedIn(true); setUser(userInfo); };
-  const handleLogout = () => { setIsLoggedIn(false); setUser(null); };
-
-   // ✅ 도미노 차트 데이터 상태
-  const [macroData, setMacroData] = useState(MOCK_MACRO_CHART);
-  
-  useEffect(() => {
-    const fetchMacroData = async () => {
-      try {
-        const res = await fetch("http://localhost:8000/api/macro-chart");
-        if (!res.ok) {
-          throw new Error("macro-chart api error");
-        }
-
-        const data = await res.json();
-        // data = [{ date: "2024.01", rate: 3.5, stock: 2500.2 }, ...]
-        setMacroData(data);
-      } catch (e) {
-        console.error("매크로 차트 데이터 불러오기 실패:", e);
-        // 실패해도 macroData는 기존 MOCK_MACRO_CHART 유지
-      }
-    };
-
-    fetchMacroData();
-  }, []);
-
-    // ✅ 시장 날씨(상단 4개 카드) 데이터 상태
-  const [weatherData, setWeatherData] = useState(MOCK_WEATHER);
-
-  useEffect(() => {
-    const fetchWeather = async () => {
-      try {
-        const res = await fetch("http://localhost:8000/api/market-weather");
-        if (!res.ok) {
-          throw new Error("market-weather api error");
-        }
-
-        const data = await res.json();
-        // data = { indices: [ { name, value, change }, ... ] }
-
-        setWeatherData(prev => ({
-          ...prev,                 // 기존 weather/headline/summary는 그대로
-          indices: data.indices ?? prev.indices,  // indices만 실데이터로 교체
-        }));
-      } catch (e) {
-        console.error("시장 날씨 데이터 불러오기 실패:", e);
-        // 실패하면 MOCK_WEATHER 유지
-      }
-    };
-
-    fetchWeather();
-  }, []);
-
-
-  if (!isLoggedIn) return <LoginScreen onLogin={handleLogin} />;
-
+// --- [PAGE] 대시보드 페이지 ---
+const DashboardPage = ({ weatherData, macroData }) => {
   return (
-    <div className="min-h-screen bg-[#F8F9FD] font-sans text-gray-800 pb-20 selection:bg-indigo-100 selection:text-indigo-700">
-      <Header user={user} onLogout={handleLogout} />
-      
-      <main className="max-w-7xl mx-auto px-4 lg:px-6 py-8 animate-in fade-in duration-500">
+    <main className="max-w-7xl mx-auto px-4 lg:px-6 py-8 animate-in fade-in duration-500">
         {/* 상단 날씨 섹션 */}
         <MarketWeather data={weatherData} />
 
@@ -602,6 +548,91 @@ const FinMateApp = () => {
 
         </div>
       </main>
+  );
+};
+
+
+// --- [MAIN APP] 전체 앱 구조 ---
+const FinMateApp = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState(null);
+
+  // 로그인 상태 관리
+  const handleLogin = (userInfo) => { setIsLoggedIn(true); setUser(userInfo); };
+  const handleLogout = () => { setIsLoggedIn(false); setUser(null); };
+
+   // ✅ 도미노 차트 데이터 상태
+  const [macroData, setMacroData] = useState(MOCK_MACRO_CHART);
+  
+  useEffect(() => {
+    const fetchMacroData = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/api/macro-chart");
+        if (!res.ok) {
+          throw new Error("macro-chart api error");
+        }
+
+        const data = await res.json();
+        // data = [{ date: "2024.01", rate: 3.5, stock: 2500.2 }, ...]
+        setMacroData(data);
+      } catch (e) {
+        console.error("매크로 차트 데이터 불러오기 실패:", e);
+        // 실패해도 macroData는 기존 MOCK_MACRO_CHART 유지
+      }
+    };
+
+    fetchMacroData();
+  }, []);
+
+    // ✅ 시장 날씨(상단 4개 카드) 데이터 상태
+  const [weatherData, setWeatherData] = useState(MOCK_WEATHER);
+
+  useEffect(() => {
+    const fetchWeather = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/api/market-weather");
+        if (!res.ok) {
+          throw new Error("market-weather api error");
+        }
+
+        const data = await res.json();
+        // data = { indices: [ { name, value, change }, ... ] }
+
+        setWeatherData(prev => ({
+          ...prev,                 // 기존 weather/headline/summary는 그대로
+          indices: data.indices ?? prev.indices,  // indices만 실데이터로 교체
+        }));
+      } catch (e) {
+        console.error("시장 날씨 데이터 불러오기 실패:", e);
+        // 실패하면 MOCK_WEATHER 유지
+      }
+    };
+
+    fetchWeather();
+  }, []);
+
+
+  if (!isLoggedIn) return <LoginScreen onLogin={handleLogin} />;
+
+  return (
+    <div className="min-h-screen bg-[#F8F9FD] font-sans text-gray-800 pb-20 selection:bg-indigo-100 selection:text-indigo-700">
+      <Header user={user} onLogout={handleLogout} />
+	  
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <DashboardPage
+              weatherData={weatherData}
+              macroData={macroData}
+            />
+          }
+        />
+        <Route
+          path="/calendar"
+          element={<EconomicCalendarPage />}
+        />
+      </Routes>
     </div>
   );
 };
