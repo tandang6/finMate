@@ -120,7 +120,7 @@ def generate_finmate_reply(
     # 설정된 모델과 설정을 사용하여 최종 텍스트를 생성합니다.
     # -----------------------------------------------------------
     chat_session = client.chats.create(
-        model=settings.MODEL_NAME,  # config.py에서 지정한 모델명 (예: gemini-2.0-flash)
+        model=settings.GEMINI_MODEL_DEFAULT,  # config.py에서 지정한 모델명 (예: gemini-2.0-flash)
         config=config,
     )
 
