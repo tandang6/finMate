@@ -18,5 +18,5 @@ class Settings:
     # GEMINI
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
     # 모델은 변경 가능합니다 
-    GEMINI_MODEL_DEFAULT = os.getenv("MODEL_NAME", "")
+    GEMINI_MODEL_DEFAULT = os.getenv("GEMINI_MODEL_DEFAULT", "")
 settings = Settings()
