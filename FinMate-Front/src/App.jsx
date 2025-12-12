@@ -403,11 +403,11 @@ const AIMentorChat = () => {
 };
 
 // --- [PAGE] 대시보드 페이지 ---
-const DashboardPage = ({ weatherData, macroData }) => {
+const DashboardPage = ({ marketWeatherData, macroData, macroInsight, newsWeather }) => {
   return (
     <main className="max-w-7xl mx-auto px-4 lg:px-6 py-8 animate-in fade-in duration-500">
         {/* 상단 날씨 섹션 */}
-        <MarketWeather data={weatherData} />
+        <MarketWeather data={marketWeatherData} />
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
@@ -455,7 +455,10 @@ const DashboardPage = ({ weatherData, macroData }) => {
                 <div className="bg-white p-2 rounded-xl shadow-sm border border-indigo-50"><Brain className="text-indigo-600 w-5 h-5" /></div>
                 <div>
                   <p className="text-sm text-indigo-900 leading-relaxed">
-                    <strong>AI Analyst 분석:</strong> 최근 금리가 하락세로 돌아서자 주가가 반등하는 <span className="font-bold text-indigo-700 underline decoration-indigo-300 decoration-2 underline-offset-2">역의 상관관계</span>가 뚜렷합니다. 유동성 공급 기대감이 시장을 주도하고 있습니다.
+                    <strong>AI Analyst 분석:</strong>{" "}
+                    {macroInsight
+                      ? macroInsight
+                      : "최근 금리와 KOSPI 흐름을 바탕으로 시장을 요약하고 있습니다."}
                   </p>
                 </div>
               </div>
@@ -470,21 +473,53 @@ const DashboardPage = ({ weatherData, macroData }) => {
                 <button className="text-sm text-indigo-600 font-bold hover:bg-indigo-50 px-3 py-1.5 rounded-full transition">전체보기 <ChevronRight className="inline w-4 h-4" /></button>
               </div>
               <div className="grid md:grid-cols-2 gap-5">
-                {MOCK_NEWS.map(news => (
-                  <div key={news.id} className="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group flex flex-col h-full">
+                {newsWeather?.cards?.map((card, idx) => (
+                  <div
+                    key={idx}
+                    className="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group flex flex-col h-full"
+                  >
                     <div className="flex justify-between mb-4">
-                      <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">{news.tag}</span>
-                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 ${news.impact === 'Positive' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-gray-100 text-gray-600'}`}>
-                        {news.impact === 'Positive' ? '📈 호재' : '➖ 중립'}
+                      {/* 카테고리 태그 */}
+                      <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
+                        {card.category}
+                      </span>
+
+                      {/* 임팩트 배지 대신 'AI 분석' 라벨 */}
+                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+                        AI 분석
                       </span>
                     </div>
-                    <h4 className="font-bold text-lg text-gray-800 mb-2 group-hover:text-indigo-600 transition leading-snug">{news.title}</h4>
-                    <p className="text-sm text-gray-500 mb-5 line-clamp-2 leading-relaxed">{news.summary}</p>
+
+                    {/* 뉴스 제목 */}
+                    <h4 className="font-bold text-lg text-gray-800 mb-2 group-hover:text-indigo-600 transition leading-snug">
+                      {card.title}
+                    </h4>
+
+                    {/* 한 줄 요약 */}
+                    <p className="text-sm text-gray-500 mb-2 line-clamp-2 leading-relaxed">
+                      {card.summary}
+                    </p>
+
+                    <a
+                      href={card.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] text-indigo-500 underline inline-block mb-3"   // ← 여기!
+                    >
+                      뉴스 원문 보기 →
+                    </a>
+
+
+                    {/* 하단 AI 인사이트 + 링크 */}
                     <div className="mt-auto bg-gray-50 p-4 rounded-2xl border border-gray-100 relative">
                       <div className="absolute -top-3 left-4 bg-white border border-gray-200 text-[10px] px-2 py-0.5 rounded-full flex gap-1 shadow-sm font-bold text-gray-600 items-center">
-                         <Brain size={10} /> AI 해석
+                        <Brain size={10} /> AI 해석
                       </div>
-                      <p className="text-xs text-gray-700 mt-1 font-medium leading-relaxed">{news.aiContext}</p>
+                      <p className="text-xs text-gray-700 mt-1 font-medium leading-relaxed">
+                        {card.insight}
+                      </p>
+
+                      
                     </div>
                   </div>
                 ))}
@@ -551,8 +586,6 @@ const DashboardPage = ({ weatherData, macroData }) => {
   );
 };
 
-
-// --- [MAIN APP] 전체 앱 구조 ---
 const FinMateApp = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
@@ -580,12 +613,27 @@ const FinMateApp = () => {
         // 실패해도 macroData는 기존 MOCK_MACRO_CHART 유지
       }
     };
-
+    
     fetchMacroData();
   }, []);
 
+const [macroInsight, setMacroInsight] = useState("");
+
+  useEffect(() => {
+    const fetchMacroInsight = async () => {
+      const res = await fetch("http://localhost:8000/api/macro-insight");
+      const data = await res.json();
+      setMacroInsight(data.insight);
+    };
+    fetchMacroInsight();
+  }, []);
+
+
     // ✅ 시장 날씨(상단 4개 카드) 데이터 상태
   const [weatherData, setWeatherData] = useState(MOCK_WEATHER);
+
+  // ✅ 뉴스 + 시장 날씨(LLM 결과) 상태
+  const [newsWeather, setNewsWeather] = useState(null);
 
   useEffect(() => {
     const fetchWeather = async () => {
@@ -612,7 +660,39 @@ const FinMateApp = () => {
   }, []);
 
 
+  // ✅ 뉴스 + LLM 시장 날씨 가져오기
+  useEffect(() => {
+    const fetchNewsWeather = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/api/news-weather");
+        if (!res.ok) {
+          throw new Error("news-weather api error");
+        }
+
+        const data = await res.json();
+        // data = { weather: { line1, line2, line3 }, cards: [...] }
+        setNewsWeather(data);
+      } catch (e) {
+        console.error("뉴스/날씨 데이터 불러오기 실패:", e);
+      }
+    };
+
+    fetchNewsWeather();
+  }, []);
+
   if (!isLoggedIn) return <LoginScreen onLogin={handleLogin} />;
+
+
+// ✅ 상단 MarketWeather 컴포넌트에 넘길 데이터 합치기
+  const marketWeatherData = {
+    weather: newsWeather
+      ? (newsWeather.weather.line1 || "").replace("오늘 날씨는 : ", "")
+      : weatherData.weather,
+    headline: newsWeather ? newsWeather.weather.line2 : weatherData.headline,
+    summary: newsWeather ? newsWeather.weather.line3 : weatherData.summary,
+    // 지수 데이터는 기존 /api/market-weather 결과 사용
+    indices: weatherData.indices,
+  };
 
   return (
     <div className="min-h-screen bg-[#F8F9FD] font-sans text-gray-800 pb-20 selection:bg-indigo-100 selection:text-indigo-700">
@@ -623,15 +703,14 @@ const FinMateApp = () => {
           path="/"
           element={
             <DashboardPage
-              weatherData={weatherData}
+              marketWeatherData={marketWeatherData}
               macroData={macroData}
+              macroInsight={macroInsight}
+              newsWeather={newsWeather}
             />
           }
         />
-        <Route
-          path="/calendar"
-          element={<EconomicCalendarPage />}
-        />
+        <Route path="/calendar" element={<EconomicCalendarPage />} />
       </Routes>
     </div>
   );

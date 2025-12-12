@@ -1,334 +1,334 @@
-import requests
-import json
-import sys
+# ecos.py
 
-# ⚠️ 여기에 고객님의 한국은행 ECOS API 인증키를 넣어주세요.
-ECOS_AUTH_KEY = "3HEAP0CVSRNLAPF7WG38" 
+# ==============================================================================
+# [필수 라이브러리 및 모듈 임포트]
+# ==============================================================================
+import requests
+import urllib.parse
+from collections import defaultdict
+from typing import List, Dict, Any, Union
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
+import calendar
+
+from config import settings  # 환경 설정 (ECOS API Key 등)
+
+# ==============================================================================
+# 1. 한국은행 ECOS API 설정
+# ==============================================================================
+
+ECOS_AUTH_KEY = settings.ECOS_AUTH_KEY
 ECOS_BASE_URL = "http://ecos.bok.or.kr/api"
 
-def search_ecos_glossary_term(term: str):
-    """
-    한국은행 ECOS API의 'StatisticWord' 서비스를 사용하여 특정 통계 용어를 검색합니다.
-    """
-    if not ECOS_AUTH_KEY or ECOS_AUTH_KEY == "YOUR_ECOS_API_KEY":
-        return {"error": "ECOS_AUTH_KEY를 설정해야 합니다."}
 
-    # 명세서에 따른 URL 경로 구성
-    # URL 구조: /StatisticWord/인증키/json/kr/1/10/검색_용어
-    url_path = (f"StatisticWord/{ECOS_AUTH_KEY}/json/kr/1/10/" 
-                f"{term}") # 검색할 용어를 URL에 직접 인코딩
-    
-    # URL 인코딩 (한글 용어가 URL에 안전하게 들어갈 수 있도록 처리)
-    import urllib.parse
-    encoded_term_path = urllib.parse.quote(term, encoding='utf-8')
-    url_path = (f"StatisticWord/{ECOS_AUTH_KEY}/json/kr/1/10/"
-                f"{encoded_term_path}")
-    
-    request_url = f"{ECOS_BASE_URL}/{url_path}"
-    
-    print(f"\n[도구 사용] 📚 ECOS 용어 검색 중: '{term}'")
-    
-    try:
-        response = requests.get(request_url, timeout=10)
-        
-        # ⚠️ JSON 디코딩 전, 서버가 오류 메시지(비 JSON)를 보냈는지 확인합니다.
-        # 응답 코드가 200이 아니거나, 내용이 예상되는 JSON 구조가 아니면 오류 처리
-        if response.status_code != 200:
-            return {"error": f"HTTP 오류 발생: {response.status_code}", "detail": response.text[:50]}
-            
-        data = response.json()
-        
-        # 명세서에 따른 응답 구조: StatisticWord
-        if 'StatisticWord' in data:
-            result = data['StatisticWord']
-            if result['list_total_count'] > 0:
-                # 용어와 정의를 딕셔너리로 반환
-                row = result['row'][0] # 첫 번째 검색 결과
-                return {
-                    "용어": row.get('WORD'),
-                    "용어설명": row.get('CONTENT')
-                }
-            else:
-                return {"message": f"용어 '{term}'에 대한 검색 결과가 없습니다."}
-        elif data.get('RESULT', {}).get('CODE') != '000':
-            # KIS처럼 오류 코드가 있는 경우 (인증키 오류 등)
-            return {"error": data['RESULT']['MESSAGE'], "code": data['RESULT']['CODE']}
-        
-        return {"error": "API 응답은 받았으나 알 수 없는 형식입니다."}
+# ==============================================================================
+# 2. 공통 유틸리티 함수 (API 호출 래퍼)
+# ==============================================================================
 
-    except requests.exceptions.JSONDecodeError:
-         return {"error": "API 서버에서 JSON 형식이 아닌 데이터(인증키/IP 오류 메시지)를 받았습니다."}
-    except Exception as e:
-        return {"error": f"네트워크 또는 파싱 오류: {str(e)}"}
-
+def get_ecos_statistic(stat_code: str, cycle: str, start: str, end: str, item_code: str = "") -> Union[List[Dict], Dict]:
+    """
+    한국은행 ECOS 통계 조회 API를 호출하는 범용 함수입니다.
     
-# =================================================================
-# ECOS 통계표 조회 공통 함수 (StatisticSearch)
-# =================================================================
-def get_ecos_statistic(stat_code: str, cycle: str, start: str, end: str, item_code: str = ""):
+    Args:
+        stat_code (str): 통계표 코드 (예: '722Y001' 기준금리)
+        cycle (str): 주기 (D:일, M:월, Q:분기, Y:년)
+        start (str): 검색 시작일자 (YYYYMMDD or YYYYMM)
+        end (str): 검색 종료일자 (YYYYMMDD or YYYYMM)
+        item_code (str): 통계 항목 코드 (선택값)
+
+    Returns:
+        List[Dict]: 성공 시 데이터 리스트 반환
+        Dict: 실패 시 에러 메시지 딕셔너리 반환
     """
-    ECOS StatisticSearch 호출용 공통 함수
-    예)
-      stat_code = "722Y001"   → 기준금리
-      cycle = "M"             → 월별
-      start = "202301"
-      end = "202512"
-    """
+    
+    # API 키 누락 확인
     if not ECOS_AUTH_KEY:
-        return {"error": "ECOS_AUTH_KEY가 없습니다."}
+        return {"error": "ECOS_AUTH_KEY가 설정되지 않았습니다."}
 
+    # URL 조립 (요청 인자 순서: 인증키/요청타입/언어/요청시작건수/요청종료건수/통계코드/주기/시작일/종료일/항목코드)
     url = (
         f"{ECOS_BASE_URL}/StatisticSearch/"
         f"{ECOS_AUTH_KEY}/json/kr/1/500/"
         f"{stat_code}/{cycle}/{start}/{end}/{item_code}"
     )
 
-    print(f"\n[ECOS 호출] 통계표 {stat_code} 조회 중...")
-
     try:
         res = requests.get(url, timeout=10)
+        
+        # HTTP 통신 에러 체크
         if res.status_code != 200:
             return {"error": f"HTTP 오류: {res.status_code}", "detail": res.text[:100]}
 
         data = res.json()
+        
+        # 1) 정상 데이터가 있는 경우 ('StatisticSearch' 키 존재)
+        if "StatisticSearch" in data:
+            return data["StatisticSearch"].get("row", [])
+        
+        # 2) API 결과 메시지 확인 ('RESULT' 키)
+        if "RESULT" in data:
+            # INFO-200: 데이터가 없다는 뜻 (에러 아님, 빈 리스트 반환)
+            if data["RESULT"].get("CODE") == "INFO-200": 
+                return [] 
+            # 그 외는 실제 API 오류
+            return {"error": data["RESULT"].get("MESSAGE"), "code": data["RESULT"].get("CODE")}
 
-        if "StatisticSearch" not in data:
-            return {"error": f"응답 구조가 이상함: {data}"}
-
-        return data["StatisticSearch"].get("row", [])
+        # 3) 예상치 못한 응답 구조
+        return {"error": f"예상치 못한 응답 구조: {str(data)[:100]}"}
 
     except Exception as e:
-        return {"error": f"네트워크 오류: {str(e)}"}
+        return {"error": f"API 호출 오류: {str(e)}"}
 
-import requests
-import json
-import sys
-import datetime
-import urllib.parse
-from dateutil.relativedelta import relativedelta
-from collections import defaultdict
-from typing import List, Dict, Any, Union
 
-# =================================================================
-# 1) 최근 기준금리 N개 가져오기 (722Y001, 월별) - 날짜 고정
-# =================================================================
-def get_policy_rate_last_n(n: int = 6):
+def search_ecos_glossary_term(term: str) -> Dict[str, str]:
     """
-    최근 기준금리 N개 가져오기 (월별)
-    - 통계표 코드: 722Y001
-    - ITEM_CODE: 0101000 (한국은행 기준금리)
+    경제 용어 사전(Glossary) 검색 함수
+    사용자가 입력한 용어에 대한 한국은행 공식 설명을 찾아줍니다.
     """
-    # ⚠️ 날짜 고정 요청에 따라 2025년 전체 기간으로 설정
-    start_date = "202501"
-    end_date = "202512"
+    if not ECOS_AUTH_KEY:
+        return {"error": "ECOS_AUTH_KEY가 필요합니다."}
 
-    rows = get_ecos_statistic(
-        stat_code="722Y001",
-        cycle="M",
-        start=start_date,
-        end=end_date,
-        item_code="0101000"
-    )
-
-    if isinstance(rows, dict) and "error" in rows:
-        return rows  # 오류 그대로 반환
-
-    rows_sorted = sorted(rows, key=lambda r: r["TIME"])
-    return rows_sorted[-n:]
-
-
-
-# =================================================================
-# 2) 최근 KOSPI 지수 N개 가져오기 (802Y001, 일별 조회 후, 월평균 계산) - 날짜 고정
-# 금리와 맞추기 위해 마지막 날짜를 한달전으로 설정
-# =================================================================
-def get_kospi_last_n(n: int = 6):
-    """
-    최근 KOSPI 지수 N개 조회 (일별 데이터를 조회 후 월평균으로 계산)
-    - 통계표 코드: 802Y001 (주식시장-일별)
-    """
-    # ⚠️ 날짜 고정 요청에 따라 원본과 유사하게 2025년 기간으로 설정
-    start_date = "20250101" 
-    end_date = "20251131" # 12월 12일 대신 31일로 설정하여 연말까지의 데이터를 포함
-
-    # API를 통해 일별 데이터 조회
-    rows = get_ecos_statistic(
-        stat_code="802Y001",
-        cycle="D", 
-        start=start_date, 
-        end=end_date,
-        item_code="0001000" 
-    )
-
-    if isinstance(rows, dict) and "error" in rows:
-        return rows  # 오류 그대로 반환
-
-    # --- 1. 일별 데이터를 월별로 그룹화 및 평균 계산 (가공 로직) ---
-    monthly_data = defaultdict(lambda: {"total": 0.0, "count": 0})
+    # URL 인코딩 (한글 검색어 처리)
+    encoded_term = urllib.parse.quote(term, encoding='utf-8')
+    url_path = f"StatisticWord/{ECOS_AUTH_KEY}/json/kr/1/10/{encoded_term}"
+    request_url = f"{ECOS_BASE_URL}/{url_path}"
     
+    try:
+        response = requests.get(request_url, timeout=10)
+        if response.status_code != 200:
+            return {"error": f"HTTP 오류: {response.status_code}"}
+            
+        data = response.json()
+        
+        # 검색 결과가 하나 이상 있을 때 첫 번째 결과를 반환
+        if 'StatisticWord' in data and data['StatisticWord']['list_total_count'] > 0:
+            row = data['StatisticWord']['row'][0]
+            return {"용어": row.get('WORD'), "용어설명": row.get('CONTENT')}
+        
+        return {"message": f"'{term}' 검색 결과 없음"}
+
+    except Exception as e:
+        return {"error": f"오류: {str(e)}"}
+
+
+# ==============================================================================
+# 3. 월별 히스토리 데이터 조회 함수 (도미노 차트용)
+# ==============================================================================
+
+def get_policy_rate_last_n(n: int = 6) -> Union[List[Dict], Dict]:
+    """
+    한국은행 기준금리 추이 조회 (최근 N개월)
+    
+    [조회 로직]
+    - 현재 달(진행 중) 데이터는 제외하고, '지난달'을 기준으로 과거 N개월을 조회합니다.
+    - 예: 현재 12월이면 -> 6월 ~ 11월 데이터 반환 (확정된 월 데이터 사용)
+    """
+    today = datetime.today()
+    
+    # 1. 기준점 설정: 지난달 (1개월 전)
+    last_month_date = today - relativedelta(months=1)
+    
+    # 2. 종료월 문자열 (YYYYMM)
+    end_str = last_month_date.strftime("%Y%m")
+    
+    # 3. 시작월 설정
+    # N개월 데이터를 얻기 위해 넉넉하게 N+2개월 전부터 조회 후 나중에 자릅니다.
+    # (공휴일 등으로 데이터가 비는 경우 대비)
+    start_dt = last_month_date - relativedelta(months=n+2)
+    start_str = start_dt.strftime("%Y%m")
+
+    # API 호출 (코드: 722Y001=금리, 주기: M, 항목: 0101000=한국은행 기준금리)
+    rows = get_ecos_statistic("722Y001", "M", start_str, end_str, "0101000")
+
+    if isinstance(rows, dict) and "error" in rows:
+        return rows
+
+    # 시간순 정렬 (과거 -> 최신)
+    rows_sorted = sorted(rows, key=lambda r: r["TIME"])
+    
+    # 데이터가 N개보다 많으면, 가장 최근(지난달)이 포함되도록 뒤에서 N개만 슬라이싱
+    return rows_sorted[-n:] if len(rows_sorted) > n else rows_sorted
+
+
+def get_kospi_last_n(n: int = 6) -> Union[List[Dict], Dict]:
+    """
+    KOSPI 월평균 지수 조회 (최근 N개월)
+    ECOS는 KOSPI '월평균' 데이터를 바로 주지 않는 경우가 있어, '일별' 데이터를 가져와 직접 평균을 냅니다.
+    """
+    today = datetime.today()
+    
+    # 1. 기준점: 지난달
+    last_month_date = today - relativedelta(months=1)
+    
+    # 2. 종료일 계산: 지난달의 마지막 날짜 (예: 11월 -> 11월 30일)
+    last_day = calendar.monthrange(last_month_date.year, last_month_date.month)[1]
+    
+    end_dt = last_month_date.replace(day=last_day)
+    end_str = end_dt.strftime("%Y%m%d")
+    
+    # 3. 시작일 계산: 넉넉하게 잡음
+    start_dt = last_month_date - relativedelta(months=n+2)
+    start_str = start_dt.strftime("%Y%m%d")
+
+    # API 호출 (코드: 802Y001=주식시장, 주기: D=일별, 항목: 0001000=KOSPI)
+    rows = get_ecos_statistic("802Y001", "D", start_str, end_str, "0001000")
+
+    if isinstance(rows, dict) and "error" in rows:
+        return rows
+
+    # [데이터 가공] 일별 데이터 -> 월별 평균 계산
+    monthly_data = defaultdict(lambda: {"total": 0.0, "count": 0})
     for row in rows:
         time_str = row["TIME"]
-        month_key = time_str[:6] # 'YYYYMM' 형식의 월별 키
-        
+        month_key = time_str[:6] # YYYYMM 추출
         try:
             value = float(row["DATA_VALUE"])
             monthly_data[month_key]["total"] += value
             monthly_data[month_key]["count"] += 1
-        except ValueError:
+        except (ValueError, TypeError):
             continue
 
-    # --- 2. 최종 월 평균 계산 및 리스트 생성 ---
     result_list = []
     for month_key, data in monthly_data.items():
         if data["count"] > 0:
             avg_value = data["total"] / data["count"]
             result_list.append({
-                "TIME": month_key,                 
-                "DATA_VALUE": f"{avg_value:.2f}", 
+                "TIME": month_key,
+                "DATA_VALUE": f"{avg_value:.2f}",
                 "UNIT_NAME": "월평균 KOSPI 지수"
             })
     
-    # --- 3. TIME 오름차순 정렬 후 최근 N개만 가져오기 ---
+    # 시간순 정렬 (과거 -> 최신)
     result_sorted = sorted(result_list, key=lambda r: r["TIME"])
-    return result_sorted[-n:]
+    
+    # 뒤에서 N개 자르기 (가장 최근 월이 마지막에 오도록)
+    return result_sorted[-n:] if len(result_sorted) > n else result_sorted
 
 
+# ==============================================================================
+# 4. 실시간(일별) 시장 지수 조회 (상단 배너용)
+# ==============================================================================
 
-# =================================================================
-# 4) KOSPI / KOSDAQ / 환율 / 국고채 3년 - 최근 값 + 전일 대비 변화
-# =================================================================
-def get_last_one():
+def get_last_one() -> Dict[str, Any]:
     """
-    2025-12-09 ~ 2025-12-10 사이의
-    KOSPI / KOSDAQ / 원달러 환율 / 국고채 3년 수익률을 조회하고
-
-    - 가장 최근 값 (마지막 일자)
-    - 전일 대비 % 변화
-
-    를 계산해서 프론트에서 바로 쓸 수 있는 형태로 반환.
+    대시보드 상단 '시장 날씨' 배너에 표시할 주요 4대 지표의 최신 데이터를 가져옵니다.
+    (KOSPI, KOSDAQ, 환율, 국고채)
+    
+    Returns:
+        { "indices": [ {name, value, change}, ... ] }
     """
+    today = datetime.today()
+    # 최근 데이터를 찾기 위해 2주 전부터 조회 (공휴일, 주말 고려)
+    start_dt = today - timedelta(days=14) 
+    
+    start_str = start_dt.strftime("%Y%m%d")
+    end_str = today.strftime("%Y%m%d")
 
-    start_date = "20251208"
-    end_date = "20251209"
-
-    # 1) 자산별 ECOS 호출 -----------------------------------------
-    kospi_rows = get_ecos_statistic(
-        stat_code="802Y001",
-        cycle="D",
-        start=start_date,
-        end=end_date,
-        item_code="0001000",   # KOSPI
-    )
-
-    kosdaq_rows = get_ecos_statistic(
-        stat_code="802Y001",
-        cycle="D",
-        start=start_date,
-        end=end_date,
-        item_code="0089000",   # KOSDAQ
-    )
-
-    fx_rows = get_ecos_statistic(
-        stat_code="731Y001",
-        cycle="D",
-        start=start_date,
-        end=end_date,
-        item_code="0000001",   # 원/달러 환율
-    )
-
-    bond_rows = get_ecos_statistic(
-        stat_code="817Y002",
-        cycle="D",
-        start=start_date,
-        end=end_date,
-        item_code="010200000",  # 국고채 3년 수익률
-    )
-
-    # 2) 에러 체크 -------------------------------------------------
-    for name, rows in [
-        ("kospi", kospi_rows),
-        ("kosdaq", kosdaq_rows),
-        ("fx", fx_rows),
-        ("bond", bond_rows),
-    ]:
+    # 조회할 자산 목록 매핑 (Key: API 코드)
+    assets = {
+        "kospi":  ("802Y001", "0001000"),    # KOSPI
+        "kosdaq": ("802Y001", "0089000"),    # KOSDAQ
+        "fx":     ("731Y001", "0000001"),    # 원/달러 환율 (종가)
+        "bond":   ("817Y002", "010200000")   # 국고채 3년 금리
+    }
+    
+    results = {}
+    for key, (code, item) in assets.items():
+        rows = get_ecos_statistic(code, "D", start_str, end_str, item)
         if isinstance(rows, dict) and "error" in rows:
-            # 어디서 에러 났는지 함께 알려주기
-            return {"error": f"{name} 조회 실패: {rows['error']}"}
+            return {"error": f"{key} 오류: {rows['error']}"}
+        results[key] = rows
 
-    # 3) 마지막/전날 값 꺼내는 헬퍼 -------------------------------
-    def last_two_values(rows):
-        """
-        rows: ECOS 응답 리스트
-        return: (last_value: float | None, prev_value: float | None)
-        """
-        if not isinstance(rows, list) or len(rows) == 0:
-            return None, None
+    # [내부 함수] 데이터 리스트에서 가장 최신 값(오늘/전일)과 그 전날 값을 추출
+    def process_asset_data(rows: List[Dict]) -> Dict[str, Any]:
+        if not rows: return {"val": None, "prev": None}
+        sorted_rows = sorted(rows, key=lambda x: x["TIME"])
+        
+        last_row = sorted_rows[-1]                                    # 가장 최신 데이터
+        prev_row = sorted_rows[-2] if len(sorted_rows) >= 2 else None # 바로 이전 데이터
+        
+        val = float(last_row["DATA_VALUE"]) if last_row else None
+        prev = float(prev_row["DATA_VALUE"]) if prev_row else None
+        return {"val": val, "prev": prev}
 
-        # 가장 최근 값
-        last = rows[-1]
-        # 그 전날 값 (없을 수도 있음)
-        prev = rows[-2] if len(rows) >= 2 else None
+    # [내부 함수] 등락률 계산 (%)
+    def calc_change(curr, prev):
+        if curr is None or prev in (None, 0): return 0.0
+        return (curr / prev - 1.0) * 100.0
 
-        def to_float(row):
-            if row is None:
-                return None
-            try:
-                return float(row.get("DATA_VALUE"))
-            except (TypeError, ValueError):
-                return None
-
-        return to_float(last), to_float(prev)
-
-    def calc_change_pct(last, prev):
-        """
-        전일 대비 % 변화 계산 (prev가 없거나 0이면 0으로 처리)
-        """
-        if last is None or prev in (None, 0):
-            return 0.0
-        return (last / prev - 1.0) * 100.0
-
-    # 4) 각 자산별 값/변화 계산 -----------------------------------
-    kospi_last, kospi_prev = last_two_values(kospi_rows)
-    kosdaq_last, kosdaq_prev = last_two_values(kosdaq_rows)
-    fx_last, fx_prev = last_two_values(fx_rows)
-    bond_last, bond_prev = last_two_values(bond_rows)
-
-    kospi_change = calc_change_pct(kospi_last, kospi_prev)
-    kosdaq_change = calc_change_pct(kosdaq_last, kosdaq_prev)
-    fx_change = calc_change_pct(fx_last, fx_prev)
-
-    # 국고채는 보통 '퍼센트포인트' 차이를 보기도 하지만,
-    # 프론트에서는 그냥 %로 찍으니까 일단 % 변화로 통일
-    bond_change = calc_change_pct(bond_last, bond_prev)
-
-    # 5) 프론트에서 바로 쓸 수 있는 형태로 묶어서 반환 ------------
-    #  - value는 문자열로 포맷
-    #  - change는 소수 1~2자리 정도로 반올림
+    # 각 자산별 데이터 처리
+    data_map = {k: process_asset_data(v) for k, v in results.items()}
+    
+    # 프론트엔드 포맷에 맞춰 리스트 생성
     return {
         "indices": [
             {
                 "name": "KOSPI",
-                "value": f"{kospi_last:,.2f}" if kospi_last is not None else "-",
-                "change": round(kospi_change, 1),
+                "value": f"{data_map['kospi']['val']:,.2f}" if data_map['kospi']['val'] else "-",
+                "change": round(calc_change(data_map['kospi']['val'], data_map['kospi']['prev']), 1),
             },
             {
                 "name": "KOSDAQ",
-                "value": f"{kosdaq_last:,.2f}" if kosdaq_last is not None else "-",
-                "change": round(kosdaq_change, 1),
+                "value": f"{data_map['kosdaq']['val']:,.2f}" if data_map['kosdaq']['val'] else "-",
+                "change": round(calc_change(data_map['kosdaq']['val'], data_map['kosdaq']['prev']), 1),
             },
             {
                 "name": "USD/KRW",
-                "value": f"{fx_last:,.2f}" if fx_last is not None else "-",
-                "change": round(fx_change, 1),
+                "value": f"{data_map['fx']['val']:,.2f}" if data_map['fx']['val'] else "-",
+                "change": round(calc_change(data_map['fx']['val'], data_map['fx']['prev']), 1),
             },
             {
                 "name": "국고채 3년",
-                "value": f"{bond_last:.2f}%" if bond_last is not None else "-",
-                "change": round(bond_change, 2),
+                "value": f"{data_map['bond']['val']:.2f}%" if data_map['bond']['val'] else "-",
+                "change": round(calc_change(data_map['bond']['val'], data_map['bond']['prev']), 2),
             },
         ]
     }
 
 
+# ==============================================================================
+# 5. 차트/그래프용 데이터 최종 가공
+# ==============================================================================
 
+def get_macro_points(n: int = 6) -> Any:
+    """
+    도미노 차트(꺾은선 그래프)에 들어갈 데이터 포인트 리스트를 생성합니다.
+    - 구조: [{date: "2024.01", rate: 3.5, stock: 2500}, ...]
+    - 기준금리(월)와 KOSPI(월평균) 데이터를 날짜 기준으로 합칩니다.
+    """
+    try:
+        # 위에서 정의한 함수들을 호출하여 데이터를 가져옵니다.
+        rate_rows = get_policy_rate_last_n(n)
+        kospi_rows = get_kospi_last_n(n)
+    except Exception as e:
+        return {"error": f"데이터 조회 오류: {e}"}
 
+    # 에러 체크
+    if isinstance(rate_rows, dict) and "error" in rate_rows: return rate_rows
+    if isinstance(kospi_rows, dict) and "error" in kospi_rows: return kospi_rows
+
+    # 매핑을 위해 KOSPI 데이터를 {날짜: 값} 형태의 딕셔너리로 변환
+    kospi_map = {r["TIME"]: float(r["DATA_VALUE"]) for r in kospi_rows if "DATA_VALUE" in r}
+
+    points = []
+    # 기준금리 데이터를 기준으로 순회하며 KOSPI 값을 매칭
+    for r in rate_rows:
+        time_key = r.get("TIME", "")
+        if not time_key: continue
+            
+        # "202401" -> "2024.01" 포맷 변경
+        formatted_date = f"{time_key[:4]}.{time_key[4:]}" if len(time_key) == 6 else time_key
+        
+        try:
+            rate_val = float(r.get("DATA_VALUE", 0))
+        except:
+            rate_val = 0.0
+
+        points.append({
+            "date": formatted_date,         # X축 라벨
+            "rate": rate_val,               # Y1축 (금리)
+            "stock": kospi_map.get(time_key)# Y2축 (주가)
+        })
+    
+    # 반환 순서: 과거(왼쪽) -> 최신(오른쪽)
+    return points
