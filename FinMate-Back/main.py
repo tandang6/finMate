@@ -5,8 +5,10 @@
 # ==============================================================================
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Literal, List, Optional, Dict, Any, Union
+from pathlib import Path
+import json
 
 # ------------------------------------------------------------------------------
 # [커스텀 모듈 임포트]
@@ -23,6 +25,7 @@ from news_weather import get_news_weather       # 네이버 뉴스 크롤링 + A
 
 from domino_insight import get_domino_insight   # 거시경제 데이터 기반 AI 인사이트 생성
 
+from calendar_insight import generate_calendar_insight   # ✅ 캘린더 인사이트(해설) 모듈
 
 # ==============================================================================
 # 1. FastAPI 앱 초기화 및 설정
@@ -93,6 +96,24 @@ class NewsWeatherResponse(BaseModel):
     """뉴스 날씨 API 최종 응답 구조"""
     weather: NewsWeather
     cards: List[NewsCard]
+
+# [캘린더 ai 해설 응답 모델]
+class CalendarInsightRequest(BaseModel):
+    title: str
+    datetime: str
+    type: Optional[str] = ""
+
+    # 프론트 payload: companyName / stockCode
+    company_name: str = Field(default="", alias="companyName")
+    stock_code: str = Field(default="", alias="stockCode")
+
+    class Config:
+        allow_population_by_field_name = True  # (Pydantic v1)
+        populate_by_name = True                # (Pydantic v2에서도 무해한 경우가 많음)
+
+
+class CalendarInsightResponse(BaseModel):
+    insight: str
 
 
 # ==============================================================================
@@ -255,6 +276,45 @@ def macro_insight():
         raise HTTPException(status_code=500, detail=data["error"])
 
     return data
+
+
+# ------------------------------------------------------------------------------
+# [3-f] 실적 발표 일정 JSON 서빙 API (/api/calendar/earnings-demo)
+# - data/earnings_events.json 파일을 그대로 반환
+# ------------------------------------------------------------------------------
+@app.get("/api/calendar/earnings-demo")
+def get_earnings_demo():
+    try:
+        path = Path(__file__).parent / "data" / "earnings_events.json"
+        with path.open(encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="earnings_events.json not found (FinMate-Back/data/earnings_events.json)")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ------------------------------------------------------------------------------
+# [3-g] 캘린더 이벤트 해설 생성 API (/api/calendar/insight)
+# - 프론트에서 이벤트 클릭 시 body로 이벤트 정보를 보내면
+#   LLM이 '롱/숏 요인 + 체크포인트' 형태로 해설을 생성해 반환
+# ------------------------------------------------------------------------------
+@app.post("/api/calendar/insight", response_model=CalendarInsightResponse)
+def calendar_insight(req: CalendarInsightRequest):
+    try:
+        text = generate_calendar_insight(
+            title=req.title,
+            company_name=req.company_name,
+            stock_code=req.stock_code,
+            datetime=req.datetime,
+            event_type=req.type,
+        )
+        return CalendarInsightResponse(insight=text)
+    except Exception as e:
+        msg = str(e)
+        if "429" in msg or "TooManyRequests" in msg:
+            raise HTTPException(status_code=429, detail="Gemini rate limit exceeded")
+        raise HTTPException(status_code=500, detail=f"insight 생성 오류: {e}")
 
 
 # ==============================================================================

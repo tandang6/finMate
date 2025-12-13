@@ -6,6 +6,8 @@ import {
   Sun, TrendingUp, Bell, Search, User, 
   ArrowRight, Brain, Calendar, ShieldAlert, Zap, LogOut, ChevronRight, CheckCircle
 } from 'lucide-react';
+import { Routes, Route, Link } from 'react-router-dom';
+import EconomicCalendarPage from './pages/calendar';
 
 // --- [DATA] 목업 데이터 (백엔드 없이 작동하기 위한 가짜 데이터) ---
 
@@ -105,12 +107,12 @@ const Header = ({ user, onLogout }) => {
   const [showMenu, setShowMenu] = useState(false);
   return (
     <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50 px-6 py-3 flex items-center justify-between shadow-sm">
-      <div className="flex items-center gap-2 cursor-pointer group">
+      <Link to="/" className="flex items-center gap-2 cursor-pointer group">
         <div className="bg-indigo-600 w-9 h-9 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
           <TrendingUp className="text-white w-5 h-5" />
         </div>
         <span className="text-xl font-bold text-gray-800 tracking-tight group-hover:text-indigo-600 transition-colors">Fin-Mate</span>
-      </div>
+      </Link>
       
       <div className="hidden md:flex items-center bg-gray-100/80 rounded-full px-5 py-2.5 w-96 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-100 transition-all border border-transparent focus-within:border-indigo-200">
         <Search className="w-4 h-4 text-gray-400 mr-2" />
@@ -118,6 +120,14 @@ const Header = ({ user, onLogout }) => {
       </div>
 
       <div className="flex items-center gap-4">
+		<Link
+          to="/calendar"
+          className="hidden md:inline-flex items-center text-sm font-medium 
+                     text-gray-600 hover:text-indigo-600 transition-colors"
+        >
+          <Calendar className="w-4 h-4 mr-1" />
+          주요 경제 일정
+        </Link>
         <button className="relative p-2 hover:bg-gray-100 rounded-full transition-colors group">
           <Bell className="w-5 h-5 text-gray-600 group-hover:text-indigo-600 transition-colors" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
@@ -392,8 +402,190 @@ const AIMentorChat = () => {
   );
 };
 
+// --- [PAGE] 대시보드 페이지 ---
+const DashboardPage = ({ marketWeatherData, macroData, macroInsight, newsWeather }) => {
+  return (
+    <main className="max-w-7xl mx-auto px-4 lg:px-6 py-8 animate-in fade-in duration-500">
+        {/* 상단 날씨 섹션 */}
+        <MarketWeather data={marketWeatherData} />
 
-// --- [MAIN APP] 전체 앱 구조 ---
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          
+          {/* [LEFT] 차트 & 뉴스 (8칸) */}
+          <div className="lg:col-span-8 space-y-8">
+            {/* 1. 도미노 차트 */}
+            <section className="bg-white p-6 md:p-8 rounded-[1.5rem] border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div>
+                  <h3 className="font-bold text-xl flex items-center gap-2 text-gray-900">
+                    <TrendingUp className="text-indigo-600" /> 거시경제 도미노 효과
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">금리와 주가의 상관관계를 AI가 분석합니다.</p>
+                </div>
+                <div className="flex gap-2 text-xs font-bold bg-gray-50 p-1 rounded-lg">
+                  <span className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-md shadow-sm border border-gray-100 text-gray-700"><div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>KOSPI</span>
+                  <span className="flex items-center gap-1.5 px-3 py-1.5 text-gray-500"><div className="w-2.5 h-2.5 rounded-full bg-indigo-500"></div>기준금리</span>
+                </div>
+              </div>
+              
+              <div className="h-[350px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={macroData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorStock" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#F87171" stopOpacity={0.15}/>
+                        <stop offset="95%" stopColor="#F87171" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fontSize:12, fill:'#9CA3AF', dy: 10}} />
+                    <YAxis yAxisId="left" orientation="left" domain={[2000, 3000]} axisLine={false} tickLine={false} tick={{fontSize:12, fill:'#9CA3AF'}} />
+                    <YAxis yAxisId="right" orientation="right" domain={[0, 5]} axisLine={false} tickLine={false} tick={{fontSize:12, fill:'#9CA3AF'}} />
+                    <Tooltip 
+                      contentStyle={{borderRadius:'16px', border:'none', boxShadow:'0 10px 25px -5px rgba(0,0,0,0.1)', padding:'12px'}} 
+                      itemStyle={{fontSize:'12px', fontWeight:'bold'}}
+                    />
+                    <Area yAxisId="left" type="monotone" dataKey="stock" name="KOSPI" fill="url(#colorStock)" stroke="#F87171" strokeWidth={3} />
+                    <Line yAxisId="right" type="monotone" dataKey="rate" name="금리(%)" stroke="#6366F1" strokeWidth={3} dot={{r:4, strokeWidth:2, fill:'#fff'}} activeDot={{r: 6}} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+              
+              <div className="mt-6 bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 flex gap-4 items-start">
+                <div className="bg-white p-2 rounded-xl shadow-sm border border-indigo-50"><Brain className="text-indigo-600 w-5 h-5" /></div>
+                <div>
+                  <p className="text-sm text-indigo-900 leading-relaxed">
+                    <strong>AI Analyst 분석:</strong>{" "}
+                    {macroInsight
+                      ? macroInsight
+                      : "최근 금리와 KOSPI 흐름을 바탕으로 시장을 요약하고 있습니다."}
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* 2. 뉴스 피드 */}
+            <section>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-bold text-xl flex items-center gap-2 text-gray-900">
+                  <Zap className="text-yellow-500 fill-yellow-500" /> 오늘의 핵심 이슈
+                </h3>
+                <button className="text-sm text-indigo-600 font-bold hover:bg-indigo-50 px-3 py-1.5 rounded-full transition">전체보기 <ChevronRight className="inline w-4 h-4" /></button>
+              </div>
+              <div className="grid md:grid-cols-2 gap-5">
+                {newsWeather?.cards?.map((card, idx) => (
+                  <div
+                    key={idx}
+                    className="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group flex flex-col h-full"
+                  >
+                    <div className="flex justify-between mb-4">
+                      {/* 카테고리 태그 */}
+                      <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
+                        {card.category}
+                      </span>
+
+                      {/* 임팩트 배지 대신 'AI 분석' 라벨 */}
+                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+                        AI 분석
+                      </span>
+                    </div>
+
+                    {/* 뉴스 제목 */}
+                    <h4 className="font-bold text-lg text-gray-800 mb-2 group-hover:text-indigo-600 transition leading-snug">
+                      {card.title}
+                    </h4>
+
+                    {/* 한 줄 요약 */}
+                    <p className="text-sm text-gray-500 mb-2 line-clamp-2 leading-relaxed">
+                      {card.summary}
+                    </p>
+
+                    <a
+                      href={card.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] text-indigo-500 underline inline-block mb-3"   // ← 여기!
+                    >
+                      뉴스 원문 보기 →
+                    </a>
+
+
+                    {/* 하단 AI 인사이트 + 링크 */}
+                    <div className="mt-auto bg-gray-50 p-4 rounded-2xl border border-gray-100 relative">
+                      <div className="absolute -top-3 left-4 bg-white border border-gray-200 text-[10px] px-2 py-0.5 rounded-full flex gap-1 shadow-sm font-bold text-gray-600 items-center">
+                        <Brain size={10} /> AI 해석
+                      </div>
+                      <p className="text-xs text-gray-700 mt-1 font-medium leading-relaxed">
+                        {card.insight}
+                      </p>
+
+                      
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+
+          {/* [RIGHT] 사이드바 (4칸) */}
+          <div className="lg:col-span-4 space-y-8">
+            {/* 3. 로직 알림 */}
+            <section className="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-sm hover:shadow-md transition">
+              <div className="flex justify-between items-center mb-5">
+                <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5 text-indigo-600" /> 내 로직 알림
+                </h3>
+                <button className="text-xs font-bold bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition">+ 추가</button>
+              </div>
+              <div className="space-y-4">
+                 <div className="p-4 bg-red-50/80 border border-red-100 rounded-2xl flex gap-3 items-start animate-pulse shadow-sm">
+                  <div className="w-2.5 h-2.5 mt-1.5 bg-red-500 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-bold text-gray-500 bg-white border border-gray-200 px-1.5 py-0.5 rounded">삼성전자 &lt; 70,000원</span>
+                    </div>
+                    <p className="text-sm font-bold text-red-700 leading-tight">현재가 69,500원!<br/>매수 구간에 도달했습니다.</p>
+                  </div>
+                </div>
+                <div className="p-4 bg-white border border-gray-100 rounded-2xl flex gap-3 items-start opacity-70 hover:opacity-100 transition">
+                   <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
+                   <div>
+                     <span className="text-[10px] font-bold text-gray-400 border px-1.5 py-0.5 rounded">환율 &gt; 1,350원</span>
+                     <p className="text-sm font-medium text-gray-500 mt-0.5">현재 1,320원으로 조건 미충족</p>
+                   </div>
+                </div>
+              </div>
+            </section>
+            
+            {/* 4. AI 챗봇 */}
+            <AIMentorChat />
+            
+            {/* 5. 경제 캘린더 */}
+            <section className="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-sm">
+              <h3 className="font-bold mb-5 flex gap-2 items-center text-gray-800"><Calendar className="w-5 h-5 text-indigo-600"/> 주요 경제 일정</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between group cursor-pointer">
+                  <div className="flex items-center gap-4">
+                    <div className="flex flex-col items-center bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 group-hover:bg-indigo-50 group-hover:border-indigo-100 transition">
+                      <span className="text-[10px] font-bold text-gray-400 group-hover:text-indigo-400">TODAY</span>
+                      <span className="text-lg font-bold text-gray-800 group-hover:text-indigo-700">12</span>
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-gray-800">미국 CPI 발표</p>
+                      <p className="text-xs text-gray-400">21:30 예정 • 예측 3.1%</p>
+                    </div>
+                  </div>
+                  <span className="bg-red-50 text-red-600 border border-red-100 text-[10px] font-bold px-2 py-1 rounded-lg">High</span>
+                </div>
+              </div>
+            </section>
+          </div>
+
+        </div>
+      </main>
+  );
+};
+
 const FinMateApp = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
@@ -505,185 +697,21 @@ const [macroInsight, setMacroInsight] = useState("");
   return (
     <div className="min-h-screen bg-[#F8F9FD] font-sans text-gray-800 pb-20 selection:bg-indigo-100 selection:text-indigo-700">
       <Header user={user} onLogout={handleLogout} />
-      
-      <main className="max-w-7xl mx-auto px-4 lg:px-6 py-8 animate-in fade-in duration-500">
-        {/* 상단 날씨 섹션 */}
-        <MarketWeather data={marketWeatherData} />
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* [LEFT] 차트 & 뉴스 (8칸) */}
-          <div className="lg:col-span-8 space-y-8">
-            {/* 1. 도미노 차트 */}
-            <section className="bg-white p-6 md:p-8 rounded-[1.5rem] border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                <div>
-                  <h3 className="font-bold text-xl flex items-center gap-2 text-gray-900">
-                    <TrendingUp className="text-indigo-600" /> 거시경제 도미노 효과
-                  </h3>
-                  <p className="text-sm text-gray-500 mt-1">금리와 주가의 상관관계를 AI가 분석합니다.</p>
-                </div>
-                <div className="flex gap-2 text-xs font-bold bg-gray-50 p-1 rounded-lg">
-                  <span className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-md shadow-sm border border-gray-100 text-gray-700"><div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>KOSPI</span>
-                  <span className="flex items-center gap-1.5 px-3 py-1.5 text-gray-500"><div className="w-2.5 h-2.5 rounded-full bg-indigo-500"></div>기준금리</span>
-                </div>
-              </div>
-              
-              <div className="h-[350px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={macroData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorStock" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#F87171" stopOpacity={0.15}/>
-                        <stop offset="95%" stopColor="#F87171" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fontSize:12, fill:'#9CA3AF', dy: 10}} />
-                    <YAxis yAxisId="left" orientation="left" domain={[2000, 3000]} axisLine={false} tickLine={false} tick={{fontSize:12, fill:'#9CA3AF'}} />
-                    <YAxis yAxisId="right" orientation="right" domain={[0, 5]} axisLine={false} tickLine={false} tick={{fontSize:12, fill:'#9CA3AF'}} />
-                    <Tooltip 
-                      contentStyle={{borderRadius:'16px', border:'none', boxShadow:'0 10px 25px -5px rgba(0,0,0,0.1)', padding:'12px'}} 
-                      itemStyle={{fontSize:'12px', fontWeight:'bold'}}
-                    />
-                    <Area yAxisId="left" type="monotone" dataKey="stock" name="KOSPI" fill="url(#colorStock)" stroke="#F87171" strokeWidth={3} />
-                    <Line yAxisId="right" type="monotone" dataKey="rate" name="금리(%)" stroke="#6366F1" strokeWidth={3} dot={{r:4, strokeWidth:2, fill:'#fff'}} activeDot={{r: 6}} />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
-              
-              <div className="mt-6 bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 flex gap-4 items-start">
-                <div className="bg-white p-2 rounded-xl shadow-sm border border-indigo-50"><Brain className="text-indigo-600 w-5 h-5" /></div>
-                <div>
-                  <p className="text-sm text-indigo-900 leading-relaxed">
-                    <strong>AI Analyst 분석:</strong>{" "}
-                    {macroInsight
-                      ? macroInsight
-                      : "최근 금리와 KOSPI 흐름을 바탕으로 시장을 요약하고 있습니다."}
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            {/* 2. 뉴스 피드 */}
-            <section>
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="font-bold text-xl flex items-center gap-2 text-gray-900">
-                  <Zap className="text-yellow-500 fill-yellow-500" /> 오늘의 핵심 이슈
-                </h3>
-                <button className="text-sm text-indigo-600 font-bold hover:bg-indigo-50 px-3 py-1.5 rounded-full transition">전체보기 <ChevronRight className="inline w-4 h-4" /></button>
-              </div>
-                            <div className="grid md:grid-cols-2 gap-5">
-                {newsWeather?.cards?.map((card, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group flex flex-col h-full"
-                  >
-                    <div className="flex justify-between mb-4">
-                      {/* 카테고리 태그 */}
-                      <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
-                        {card.category}
-                      </span>
-
-                      {/* 임팩트 배지 대신 'AI 분석' 라벨 */}
-                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
-                        AI 분석
-                      </span>
-                    </div>
-
-                    {/* 뉴스 제목 */}
-                    <h4 className="font-bold text-lg text-gray-800 mb-2 group-hover:text-indigo-600 transition leading-snug">
-                      {card.title}
-                    </h4>
-
-                    {/* 한 줄 요약 */}
-                    <p className="text-sm text-gray-500 mb-2 line-clamp-2 leading-relaxed">
-                      {card.summary}
-                    </p>
-
-                    <a
-                      href={card.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[10px] text-indigo-500 underline inline-block mb-3"   // ← 여기!
-                    >
-                      뉴스 원문 보기 →
-                    </a>
-
-
-                    {/* 하단 AI 인사이트 + 링크 */}
-                    <div className="mt-auto bg-gray-50 p-4 rounded-2xl border border-gray-100 relative">
-                      <div className="absolute -top-3 left-4 bg-white border border-gray-200 text-[10px] px-2 py-0.5 rounded-full flex gap-1 shadow-sm font-bold text-gray-600 items-center">
-                        <Brain size={10} /> AI 해석
-                      </div>
-                      <p className="text-xs text-gray-700 mt-1 font-medium leading-relaxed">
-                        {card.insight}
-                      </p>
-
-                      
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
-
-          {/* [RIGHT] 사이드바 (4칸) */}
-          <div className="lg:col-span-4 space-y-8">
-            {/* 3. 로직 알림 */}
-            <section className="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-sm hover:shadow-md transition">
-              <div className="flex justify-between items-center mb-5">
-                <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                  <ShieldAlert className="w-5 h-5 text-indigo-600" /> 내 로직 알림
-                </h3>
-                <button className="text-xs font-bold bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition">+ 추가</button>
-              </div>
-              <div className="space-y-4">
-                 <div className="p-4 bg-red-50/80 border border-red-100 rounded-2xl flex gap-3 items-start animate-pulse shadow-sm">
-                  <div className="w-2.5 h-2.5 mt-1.5 bg-red-500 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-bold text-gray-500 bg-white border border-gray-200 px-1.5 py-0.5 rounded">삼성전자 &lt; 70,000원</span>
-                    </div>
-                    <p className="text-sm font-bold text-red-700 leading-tight">현재가 69,500원!<br/>매수 구간에 도달했습니다.</p>
-                  </div>
-                </div>
-                <div className="p-4 bg-white border border-gray-100 rounded-2xl flex gap-3 items-start opacity-70 hover:opacity-100 transition">
-                   <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
-                   <div>
-                     <span className="text-[10px] font-bold text-gray-400 border px-1.5 py-0.5 rounded">환율 &gt; 1,350원</span>
-                     <p className="text-sm font-medium text-gray-500 mt-0.5">현재 1,320원으로 조건 미충족</p>
-                   </div>
-                </div>
-              </div>
-            </section>
-            
-            {/* 4. AI 챗봇 */}
-            <AIMentorChat />
-            
-            {/* 5. 경제 캘린더 */}
-            <section className="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-sm">
-              <h3 className="font-bold mb-5 flex gap-2 items-center text-gray-800"><Calendar className="w-5 h-5 text-indigo-600"/> 주요 경제 일정</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between group cursor-pointer">
-                  <div className="flex items-center gap-4">
-                    <div className="flex flex-col items-center bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 group-hover:bg-indigo-50 group-hover:border-indigo-100 transition">
-                      <span className="text-[10px] font-bold text-gray-400 group-hover:text-indigo-400">TODAY</span>
-                      <span className="text-lg font-bold text-gray-800 group-hover:text-indigo-700">12</span>
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm text-gray-800">미국 CPI 발표</p>
-                      <p className="text-xs text-gray-400">21:30 예정 • 예측 3.1%</p>
-                    </div>
-                  </div>
-                  <span className="bg-red-50 text-red-600 border border-red-100 text-[10px] font-bold px-2 py-1 rounded-lg">High</span>
-                </div>
-              </div>
-            </section>
-          </div>
-
-        </div>
-      </main>
+	  
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <DashboardPage
+              marketWeatherData={marketWeatherData}
+              macroData={macroData}
+              macroInsight={macroInsight}
+              newsWeather={newsWeather}
+            />
+          }
+        />
+        <Route path="/calendar" element={<EconomicCalendarPage />} />
+      </Routes>
     </div>
   );
 };
