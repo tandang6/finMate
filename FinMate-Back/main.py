@@ -28,6 +28,7 @@ from domino_insight import get_domino_insight   # 거시경제 데이터 기반 
 from calendar_insight import generate_calendar_insight   # ✅ 캘린더 인사이트(해설) 모듈
 from plan_db import init_db
 from plan_routes import router as planner_router
+from strategy_routes import router as strategy_router
 
 # ==============================================================================
 # 1. FastAPI 앱 초기화 및 설정
@@ -57,6 +58,7 @@ def on_startup():
 
 
 app.include_router(planner_router, prefix="/api/planner")
+app.include_router(strategy_router, prefix="/api/strategies")
 
 
 # ==============================================================================

@@ -1,0 +1,332 @@
+{
+  "version": "slice-1a",
+  "strategies": [
+    {
+      "strategy_id": "ma_support_retest",
+      "name": "MA Support Retest",
+      "activation_state": "live",
+      "activation_reason": "Approved V1 live strategy for daily Korean-stock evaluation.",
+      "kind": "trigger",
+      "supported_timeframes": [
+        "1d"
+      ],
+      "summary": "Rising moving-average support retest after a constructive uptrend.",
+      "when_to_use": "Use after price pulls back into a rising moving-average support area without breaking the larger daily structure.",
+      "when_not_to_use": "Avoid when price is below the support average, trend structure is flat-to-down, or the latest daily bars are stale or partial.",
+      "holding_profile": "Swing trade measured in days to a few weeks while the daily trend remains intact.",
+      "required_data": [
+        "daily_bars",
+        "daily_volume",
+        "benchmark_daily_bars"
+      ],
+      "evaluator_id": "ma_support_retest_v1",
+      "tags": [
+        "trend",
+        "support",
+        "daily"
+      ],
+      "disclaimer": "Educational strategy card only. Zone and rule outputs guide planning but do not guarantee future performance."
+    },
+    {
+      "strategy_id": "resistance_breakout_retest",
+      "name": "Resistance Breakout Retest",
+      "activation_state": "live",
+      "activation_reason": "Approved V1 live strategy for daily Korean-stock evaluation.",
+      "kind": "trigger",
+      "supported_timeframes": [
+        "1d"
+      ],
+      "summary": "Breakout above a prior daily resistance area followed by a controlled retest.",
+      "when_to_use": "Use when price clears a visible daily resistance zone and then holds it on a later pullback with acceptable volume behavior.",
+      "when_not_to_use": "Avoid when the move is extended from the breakout area, volume confirmation is weak, or the benchmark backdrop is clearly deteriorating.",
+      "holding_profile": "Momentum-oriented swing plan that expects follow-through within the next several daily bars.",
+      "required_data": [
+        "daily_bars",
+        "daily_volume",
+        "benchmark_daily_bars"
+      ],
+      "evaluator_id": "resistance_breakout_retest_v1",
+      "tags": [
+        "breakout",
+        "retest",
+        "daily"
+      ],
+      "disclaimer": "Educational strategy card only. Zone and rule outputs guide planning but do not guarantee future performance."
+    },
+    {
+      "strategy_id": "pullback",
+      "name": "Pullback",
+      "activation_state": "live",
+      "activation_reason": "Approved V1 live strategy for daily Korean-stock evaluation.",
+      "kind": "trigger",
+      "supported_timeframes": [
+        "1d"
+      ],
+      "summary": "Trend-following pullback into a constructive daily demand area.",
+      "when_to_use": "Use when a stock is already in a healthy daily uptrend and retraces into an area where prior buyers have defended price.",
+      "when_not_to_use": "Avoid when the pullback is actually a trend break, the market regime is hostile, or data freshness is not reliable.",
+      "holding_profile": "Swing trade that expects the broader daily uptrend to resume after the pullback stabilizes.",
+      "required_data": [
+        "daily_bars",
+        "daily_volume",
+        "benchmark_daily_bars"
+      ],
+      "evaluator_id": "pullback_v1",
+      "tags": [
+        "trend",
+        "pullback",
+        "daily"
+      ],
+      "disclaimer": "Educational strategy card only. Zone and rule outputs guide planning but do not guarantee future performance."
+    },
+    {
+      "strategy_id": "darvas_range_breakout",
+      "name": "Darvas/Range Breakout",
+      "activation_state": "live",
+      "activation_reason": "Approved V1 live strategy for daily Korean-stock evaluation.",
+      "kind": "trigger",
+      "supported_timeframes": [
+        "1d"
+      ],
+      "summary": "Daily box consolidation followed by a breakout above range resistance.",
+      "when_to_use": "Use when price has built a stable daily range and then breaks above the top of that structure with supportive volume context.",
+      "when_not_to_use": "Avoid when the range is noisy, the breakout happens on weak confirmation, or data coverage is partial.",
+      "holding_profile": "Breakout swing plan that seeks continued expansion after the range resolves higher.",
+      "required_data": [
+        "daily_bars",
+        "daily_volume",
+        "benchmark_daily_bars"
+      ],
+      "evaluator_id": "darvas_range_breakout_v1",
+      "tags": [
+        "range",
+        "breakout",
+        "daily"
+      ],
+      "disclaimer": "Educational strategy card only. Zone and rule outputs guide planning but do not guarantee future performance."
+    },
+    {
+      "strategy_id": "ma_reclaim",
+      "name": "MA Reclaim",
+      "activation_state": "live",
+      "activation_reason": "Approved V1 live strategy for daily Korean-stock evaluation.",
+      "kind": "trigger",
+      "supported_timeframes": [
+        "1d"
+      ],
+      "summary": "Price regains a meaningful moving average after trading below it.",
+      "when_to_use": "Use when a stock reclaims a key daily moving average and then starts to hold above it instead of falling back under immediately.",
+      "when_not_to_use": "Avoid when reclaim strength is weak, the move is countertrend, or the benchmark regime remains clearly unsupportive.",
+      "holding_profile": "Recovery-oriented swing plan that waits for reclaimed daily structure to prove itself.",
+      "required_data": [
+        "daily_bars",
+        "daily_volume",
+        "benchmark_daily_bars"
+      ],
+      "evaluator_id": "ma_reclaim_v1",
+      "tags": [
+        "moving_average",
+        "reclaim",
+        "daily"
+      ],
+      "disclaimer": "Educational strategy card only. Zone and rule outputs guide planning but do not guarantee future performance."
+    },
+    {
+      "strategy_id": "value_quality",
+      "name": "Value/Quality",
+      "activation_state": "education_only",
+      "activation_reason": "Fundamentals are not available in the Slice 1A foundation, so the card stays educational only.",
+      "kind": "trigger",
+      "supported_timeframes": [
+        "1d"
+      ],
+      "summary": "Fundamental quality and valuation discipline paired with patient daily entry planning.",
+      "when_to_use": "Use as an educational framework when you want to combine balance-sheet quality, earnings durability, and disciplined entry zones.",
+      "when_not_to_use": "Do not treat this as live logic until fundamentals are actually available and validated in the product.",
+      "holding_profile": "Longer holding horizon than the technical trigger cards once fundamentals can support the thesis.",
+      "required_data": [
+        "daily_bars",
+        "fundamentals"
+      ],
+      "tags": [
+        "fundamentals",
+        "quality",
+        "education"
+      ],
+      "disclaimer": "Educational strategy card only. It is not currently evaluable in V1."
+    },
+    {
+      "strategy_id": "pead",
+      "name": "PEAD",
+      "activation_state": "deferred",
+      "activation_reason": "PEAD is explicitly out of V1 live scope.",
+      "kind": "trigger",
+      "supported_timeframes": [
+        "1d"
+      ],
+      "summary": "Post-earnings drift continuation after a meaningful earnings surprise.",
+      "when_to_use": "Use only after a future slice adds reliable earnings-event inputs and post-event rules.",
+      "when_not_to_use": "Do not use in Slice 1A because earnings surprise and event timing are not part of the foundation.",
+      "holding_profile": "Event-driven swing or position trade once the required earnings dataset exists.",
+      "required_data": [
+        "daily_bars",
+        "daily_volume",
+        "earnings_events"
+      ],
+      "tags": [
+        "earnings",
+        "event_driven",
+        "deferred"
+      ],
+      "disclaimer": "Deferred strategy definition only. No live PEAD evaluation is implemented in V1."
+    },
+    {
+      "strategy_id": "sector_rotation",
+      "name": "Sector Rotation",
+      "activation_state": "deferred",
+      "activation_reason": "Sector ranking and breadth inputs are deferred beyond Slice 1A.",
+      "kind": "trigger",
+      "supported_timeframes": [
+        "1d"
+      ],
+      "summary": "Rotate toward sectors showing improving leadership versus the market.",
+      "when_to_use": "Use only after sector-level comparative data and ranking rules are available.",
+      "when_not_to_use": "Do not use in Slice 1A because the foundation does not provide sector ranking data.",
+      "holding_profile": "Relative-strength style swing or position framework once sector leadership data exists.",
+      "required_data": [
+        "daily_bars",
+        "benchmark_daily_bars",
+        "sector_data",
+        "relative_strength"
+      ],
+      "tags": [
+        "sector",
+        "rotation",
+        "deferred"
+      ],
+      "disclaimer": "Deferred strategy definition only. No sector rotation logic is implemented in V1."
+    },
+    {
+      "strategy_id": "vcp",
+      "name": "VCP",
+      "activation_state": "deferred",
+      "activation_reason": "Pattern-specific contraction logic is deferred beyond Slice 1A.",
+      "kind": "trigger",
+      "supported_timeframes": [
+        "1d"
+      ],
+      "summary": "Volatility contraction pattern that resolves into a constructive breakout.",
+      "when_to_use": "Use only after future slices add the pattern-detection rules and supporting validations.",
+      "when_not_to_use": "Do not use in Slice 1A because VCP-specific evaluator logic is intentionally deferred.",
+      "holding_profile": "Breakout swing framework that depends on repeated contraction and expansion behavior.",
+      "required_data": [
+        "daily_bars",
+        "daily_volume",
+        "volatility_indicators"
+      ],
+      "tags": [
+        "pattern",
+        "volatility",
+        "deferred"
+      ],
+      "disclaimer": "Deferred strategy definition only. No live VCP evaluation is implemented in V1."
+    },
+    {
+      "strategy_id": "gap_and_go",
+      "name": "Gap-and-Go",
+      "activation_state": "deferred",
+      "activation_reason": "Intraday-sensitive gap behavior is outside the daily-bar Slice 1A foundation.",
+      "kind": "trigger",
+      "supported_timeframes": [
+        "1d"
+      ],
+      "summary": "Strong gap continuation setup that typically depends on more granular execution context.",
+      "when_to_use": "Use only after a future slice intentionally supports the needed gap rules and execution constraints.",
+      "when_not_to_use": "Do not use in Slice 1A because daily-bar-only data is insufficient for dependable gap-and-go logic.",
+      "holding_profile": "Tactical momentum setup that needs more than the current daily-only foundation.",
+      "required_data": [
+        "daily_bars",
+        "daily_volume"
+      ],
+      "tags": [
+        "gap",
+        "momentum",
+        "deferred"
+      ],
+      "disclaimer": "Deferred strategy definition only. No live Gap-and-Go evaluation is implemented in V1."
+    },
+    {
+      "strategy_id": "rsi_oversold_rebound",
+      "name": "RSI Oversold Rebound",
+      "activation_state": "deferred",
+      "activation_reason": "Indicator-driven rebound logic is deferred beyond Slice 1A.",
+      "kind": "trigger",
+      "supported_timeframes": [
+        "1d"
+      ],
+      "summary": "Mean-reversion rebound after an oversold momentum reading.",
+      "when_to_use": "Use only after future slices intentionally add RSI-based evaluation logic and guardrails.",
+      "when_not_to_use": "Do not use in Slice 1A because RSI-specific evaluator logic is intentionally deferred.",
+      "holding_profile": "Shorter-term rebound framework that requires disciplined exit handling once implemented.",
+      "required_data": [
+        "daily_bars",
+        "volatility_indicators"
+      ],
+      "tags": [
+        "mean_reversion",
+        "rsi",
+        "deferred"
+      ],
+      "disclaimer": "Deferred strategy definition only. No live RSI rebound evaluation is implemented in V1."
+    },
+    {
+      "strategy_id": "bb_squeeze",
+      "name": "BB Squeeze",
+      "activation_state": "deferred",
+      "activation_reason": "Bollinger-width compression logic is deferred beyond Slice 1A.",
+      "kind": "trigger",
+      "supported_timeframes": [
+        "1d"
+      ],
+      "summary": "Volatility compression followed by a directional expansion from a Bollinger squeeze.",
+      "when_to_use": "Use only after future slices add Bollinger-width calculations and expansion rules.",
+      "when_not_to_use": "Do not use in Slice 1A because squeeze-specific evaluator logic is intentionally deferred.",
+      "holding_profile": "Expansion-style swing framework that depends on indicator-based compression and release.",
+      "required_data": [
+        "daily_bars",
+        "volatility_indicators"
+      ],
+      "tags": [
+        "bollinger",
+        "volatility",
+        "deferred"
+      ],
+      "disclaimer": "Deferred strategy definition only. No live BB Squeeze evaluation is implemented in V1."
+    },
+    {
+      "strategy_id": "relative_strength_leader",
+      "name": "Relative Strength Leader",
+      "activation_state": "blocked_by_data",
+      "activation_reason": "Cross-sectional relative-strength inputs are not available in the Slice 1A foundation.",
+      "kind": "trigger",
+      "supported_timeframes": [
+        "1d"
+      ],
+      "summary": "Focus on stocks outperforming the market and peers over a persistent daily window.",
+      "when_to_use": "Use only after future slices add reliable cross-sectional ranking and benchmark-relative calculations.",
+      "when_not_to_use": "Do not use in Slice 1A because the required relative-strength dataset is not available yet.",
+      "holding_profile": "Leadership-following swing framework that depends on repeatable cross-sectional measurements.",
+      "required_data": [
+        "daily_bars",
+        "daily_volume",
+        "benchmark_daily_bars",
+        "relative_strength"
+      ],
+      "tags": [
+        "relative_strength",
+        "blocked_by_data"
+      ],
+      "disclaimer": "Blocked-by-data strategy definition only. No live evaluation is available until the required data exists."
+    }
+  ]
+}
