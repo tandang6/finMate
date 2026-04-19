@@ -1,0 +1,199 @@
+import React from "react";
+import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+
+import StrategiesPage from "./strategies";
+
+
+const catalogPayload = {
+  version: "slice-1a",
+  strategies: [
+    {
+      strategy_id: "ma_reclaim",
+      name: "MA Reclaim",
+      activation_state: "live",
+      activation_reason: "Approved live strategy",
+      kind: "trigger",
+      supported_timeframes: ["1d"],
+      summary: "Price reclaims a key moving average.",
+      when_to_use: "Use after a constructive reclaim.",
+      when_not_to_use: "Avoid in weak structure.",
+      holding_profile: "Days to weeks.",
+      required_data: ["daily_bars"],
+      evaluator_id: "ma_reclaim_v1",
+      tags: ["daily"],
+      disclaimer: "Educational only.",
+    },
+    {
+      strategy_id: "value_quality",
+      name: "Value/Quality",
+      activation_state: "education_only",
+      activation_reason: "Fundamentals are unavailable.",
+      kind: "trigger",
+      supported_timeframes: ["1d"],
+      summary: "Quality-focused educational card.",
+      when_to_use: "Use when fundamentals are available.",
+      when_not_to_use: "Do not use live in V1.",
+      holding_profile: "Longer horizon.",
+      required_data: ["fundamentals"],
+      tags: ["education"],
+      disclaimer: "Educational only.",
+    },
+    {
+      strategy_id: "pead",
+      name: "PEAD",
+      activation_state: "deferred",
+      activation_reason: "Deferred in V1.",
+      kind: "trigger",
+      supported_timeframes: ["1d"],
+      summary: "Post-earnings drift card.",
+      when_to_use: "Only after event data exists.",
+      when_not_to_use: "Do not use in V1.",
+      holding_profile: "Event driven.",
+      required_data: ["earnings_events"],
+      tags: ["deferred"],
+      disclaimer: "Deferred only.",
+    },
+  ],
+};
+
+const evaluationPayload = {
+  catalog_version: "slice-1a",
+  symbol: {
+    symbol_code: "005930",
+    symbol_name: "삼성전자",
+    market: "KRX",
+  },
+  timeframe: "1d",
+  evaluated_at: "2026-04-19T00:00:00Z",
+  data_status: "fresh",
+  source: {
+    provider_id: "mock",
+    provider_name: "Mock Market Data",
+    dataset: "fixture",
+    provenance: "test",
+  },
+  live_evaluation_groups: [
+    {
+      bucket_id: "applicable",
+      bucket_label: "적용 가능",
+      evaluations: [
+        {
+          strategy_id: "ma_reclaim",
+          strategy_name: "MA Reclaim",
+          activation_state: "live",
+          symbol: {
+            symbol_code: "005930",
+            symbol_name: "삼성전자",
+            market: "KRX",
+          },
+          timeframe: "1d",
+          evaluated_at: "2026-04-19T00:00:00Z",
+          data_status: "fresh",
+          conditions: [
+            {
+              check_id: "reclaim",
+              label: "MA reclaim",
+              status: "met",
+              detail: "Price reclaimed the moving average.",
+              value: "20MA",
+            },
+          ],
+          filters: [],
+          guardrails: [],
+          buy_zone: {
+            label: "Buy zone",
+            description: "Around the reclaimed average.",
+            lower_price: 80000,
+            upper_price: 82000,
+            unit: "KRW",
+          },
+          stop_invalidation_rule: {
+            label: "Invalidation",
+            rule_text: "Exit if price loses the reclaimed average on a closing basis.",
+          },
+          target_review_zone: {
+            label: "Target review",
+            description: "Prior swing high area.",
+            lower_price: 86000,
+            upper_price: 88000,
+            unit: "KRW",
+          },
+          first_position_rule: "Start with a partial position.",
+          holding_profile: "Days to weeks.",
+          why_this_plan: "Reclaim held and the setup is actionable.",
+        },
+      ],
+    },
+    {
+      bucket_id: "conditions_insufficient",
+      bucket_label: "지금은 조건 부족",
+      evaluations: [],
+    },
+    {
+      bucket_id: "data_unavailable",
+      bucket_label: "데이터 부족",
+      evaluations: [],
+    },
+  ],
+  non_live_catalog_groups: [
+    {
+      activation_state: "education_only",
+      strategies: [catalogPayload.strategies[1]],
+    },
+    {
+      activation_state: "deferred",
+      strategies: [catalogPayload.strategies[2]],
+    },
+  ],
+};
+
+function okJson(data) {
+  return Promise.resolve({
+    ok: true,
+    json: async () => data,
+  });
+}
+
+describe("StrategiesPage", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+    global.fetch = jest.fn((url) => {
+      if (url.includes("/api/strategies/catalog")) {
+        return okJson(catalogPayload);
+      }
+      if (url.includes("/api/strategies/evaluate")) {
+        return okJson(evaluationPayload);
+      }
+      return Promise.reject(new Error(`Unexpected url ${url}`));
+    });
+  });
+
+  afterEach(() => {
+    jest.resetAllMocks();
+  });
+
+  test("renders grouped live and non-live strategy sections", async () => {
+    render(
+      <MemoryRouter>
+        <StrategiesPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("/strategies에서만 전략을 비교하고 평가해요")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "적용 가능" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "교육용" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "보류" })).toBeInTheDocument();
+    expect(screen.getByText("MA Reclaim")).toBeInTheDocument();
+    expect(screen.getByText("Value/Quality")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /이 전략으로 계획 만들기/i })).toBeInTheDocument();
+
+    await waitFor(() => {
+      const evaluateCall = global.fetch.mock.calls.find(([url]) => url.includes("/api/strategies/evaluate"));
+      expect(evaluateCall).toBeTruthy();
+      expect(evaluateCall[1].method).toBe("POST");
+      expect(evaluateCall[1].body).toContain("005930");
+    });
+  });
+});

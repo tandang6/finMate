@@ -10,6 +10,7 @@ import { Routes, Route, Link } from 'react-router-dom';
 import EconomicCalendarPage from './pages/calendar';
 import FirstPurchasePlanner from './pages/planner';
 import MyPlansPage from './pages/my-plans';
+import StrategiesPage from './pages/strategies';
 
 // --- [DATA] 목업 데이터 (백엔드 없이 작동하기 위한 가짜 데이터) ---
 
@@ -131,12 +132,12 @@ const Header = ({ user, onLogout }) => {
           주요 경제 일정
         </Link>
         <Link
-          to="/planner"
+          to="/strategies"
           className="hidden md:inline-flex items-center text-sm font-medium
                      text-gray-600 hover:text-indigo-600 transition-colors"
         >
-          <ClipboardList className="w-4 h-4 mr-1" />
-          매수 플래너
+          <Zap className="w-4 h-4 mr-1" />
+          전략 탐색
         </Link>
         <Link
           to="/my-plans"
@@ -166,11 +167,11 @@ const Header = ({ user, onLogout }) => {
                 <p className="text-sm font-bold text-gray-800 truncate">{user?.email}</p>
               </div>
               <Link
-                to="/planner"
+                to="/strategies"
                 onClick={() => setShowMenu(false)}
                 className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
               >
-                <ClipboardList className="w-4 h-4" /> 매수 플래너
+                <Zap className="w-4 h-4" /> 전략 탐색
               </Link>
               <Link
                 to="/my-plans"
@@ -743,6 +744,7 @@ const [macroInsight, setMacroInsight] = useState("");
           }
         />
         <Route path="/calendar" element={<EconomicCalendarPage />} />
+        <Route path="/strategies" element={<StrategiesPage />} />
         <Route path="/planner" element={<FirstPurchasePlanner />} />
         <Route path="/my-plans" element={<MyPlansPage />} />
       </Routes>

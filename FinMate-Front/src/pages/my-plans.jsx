@@ -6,12 +6,22 @@ import {
   ClipboardList,
   Loader2,
   PencilLine,
+  ShieldCheck,
   Trash2,
 } from "lucide-react";
 
+import StrategyCard from "../components/StrategyCard";
+import {
+  PLANNER_API_BASE,
+  fetchJson,
+  formatDateTime,
+  formatPrice,
+  formatPriceZone,
+  getPlannerHeaders,
+  parseOptionalNumber,
+} from "../lib/strategy-flow";
 
-const API_BASE = "http://localhost:8000/api/planner";
-const USER_ID_KEY = "finmate-user-id";
+
 const DISCLAIMER_TEXT =
   "* 본 서비스에서 제공하는 전략 및 정보는 투자 권유가 아니며, 일반적인 교육 목적의 참고 자료입니다. 모든 투자 판단과 그에 따른 손익의 책임은 이용자 본인에게 있습니다. 예시 전략은 미래 성과를 보장하지 않습니다.";
 
@@ -36,49 +46,189 @@ const STYLE_MAP = {
   },
 };
 
+const STATUS_LABELS = {
+  saved: "저장됨",
+  draft: "임시저장",
+};
 
-function getPlannerUserId() {
-  const existing = window.localStorage.getItem(USER_ID_KEY);
-  if (existing) {
-    return existing;
+function getStrategyStyle(plan) {
+  return STYLE_MAP[plan?.strategy_snapshot?.style] ?? STYLE_MAP.technical;
+}
+
+function isSnapshotBacked(plan) {
+  return Boolean(plan?.evaluation_snapshot);
+}
+
+function getStrategyName(plan) {
+  return (
+    plan?.evaluation_snapshot?.strategy_name ??
+    plan?.strategy_snapshot?.name ??
+    plan?.strategy_snapshot?.strategy_id ??
+    plan?.strategy_template_id ??
+    "전략 정보 없음"
+  );
+}
+
+function getDisplaySymbol(plan) {
+  return plan?.evaluation_snapshot?.symbol?.symbol_name ?? plan?.symbol ?? "종목 정보 없음";
+}
+
+function getDisplaySymbolMeta(plan) {
+  if (plan?.evaluation_snapshot?.symbol) {
+    const symbol = plan.evaluation_snapshot.symbol;
+    return `${symbol.symbol_code} · ${symbol.market}`;
   }
-
-  const generated =
-    window.crypto?.randomUUID?.() ??
-    `finmate-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  window.localStorage.setItem(USER_ID_KEY, generated);
-  return generated;
+  return "기존 저장 형식";
 }
 
-
-async function fetchJson(url, options = {}) {
-  const response = await fetch(url, options);
-  if (!response.ok) {
-    let message = "요청을 처리하지 못했어요.";
-    try {
-      const data = await response.json();
-      if (typeof data.detail === "string") {
-        message = data.detail;
-      }
-    } catch (error) {
-      message = "요청을 처리하지 못했어요.";
-    }
-    throw new Error(message);
-  }
-  return response.json();
+function formatOverridePrice(value) {
+  return Number.isFinite(value) ? formatPrice(value) : "미설정";
 }
 
-
-function formatDate(value) {
-  return new Date(value).toLocaleString("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+function formatOverridePercent(value) {
+  return Number.isFinite(value) ? `${value}%` : "미설정";
 }
 
+function hasOverrideValues(plan) {
+  return [
+    plan?.entry_price_override,
+    plan?.stop_loss_price_override,
+    plan?.target_price_override,
+    plan?.position_size_override_pct,
+  ].some((value) => Number.isFinite(value));
+}
+
+function buildEditForm(plan) {
+  return {
+    entry_price_override:
+      plan.entry_price_override == null ? "" : String(plan.entry_price_override),
+    stop_loss_price_override:
+      plan.stop_loss_price_override == null ? "" : String(plan.stop_loss_price_override),
+    target_price_override:
+      plan.target_price_override == null ? "" : String(plan.target_price_override),
+    position_size_override_pct:
+      plan.position_size_override_pct == null ? "" : String(plan.position_size_override_pct),
+    holding_period: plan.holding_period ?? "",
+    one_line_reason: plan.one_line_reason ?? "",
+    note: plan.note ?? "",
+    status: plan.status ?? "saved",
+  };
+}
+
+function Field({ label, hint, children }) {
+  const control = React.isValidElement(children)
+    ? React.cloneElement(children, {
+        "aria-label": children.props["aria-label"] ?? label,
+      })
+    : children;
+
+  return (
+    <label className="block">
+      <div className="text-sm font-bold text-gray-800 mb-2">{label}</div>
+      {control}
+      {hint && <div className="text-xs text-gray-400 mt-2">{hint}</div>}
+    </label>
+  );
+}
+
+function TextInput(props) {
+  return (
+    <input
+      {...props}
+      className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+    />
+  );
+}
+
+function TextArea(props) {
+  return (
+    <textarea
+      {...props}
+      className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+    />
+  );
+}
+
+function OverrideSummary({ plan }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="bg-white rounded-[1.25rem] border border-gray-100 p-4">
+        <div className="text-xs text-gray-400 mb-1">매수 가격 오버라이드</div>
+        <div className="font-bold text-gray-900">{formatOverridePrice(plan.entry_price_override)}</div>
+      </div>
+      <div className="bg-white rounded-[1.25rem] border border-gray-100 p-4">
+        <div className="text-xs text-gray-400 mb-1">손절 가격 오버라이드</div>
+        <div className="font-bold text-gray-900">{formatOverridePrice(plan.stop_loss_price_override)}</div>
+      </div>
+      <div className="bg-white rounded-[1.25rem] border border-gray-100 p-4">
+        <div className="text-xs text-gray-400 mb-1">목표 재검토 오버라이드</div>
+        <div className="font-bold text-gray-900">{formatOverridePrice(plan.target_price_override)}</div>
+      </div>
+      <div className="bg-white rounded-[1.25rem] border border-gray-100 p-4">
+        <div className="text-xs text-gray-400 mb-1">첫 비중 오버라이드</div>
+        <div className="font-bold text-gray-900">{formatOverridePercent(plan.position_size_override_pct)}</div>
+      </div>
+    </div>
+  );
+}
+
+function LegacyPlanDetail({ plan }) {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-[1.25rem] border border-amber-100 bg-amber-50 px-4 py-4 text-sm text-amber-800 leading-relaxed">
+        평가 스냅샷 이전에 저장된 기존 계획입니다. 현재는 저장된 표시값과 오버라이드 값만 유지하며, 실시간 재평가는 하지 않습니다.
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-[1.25rem] border border-gray-100 p-4">
+          <div className="text-xs text-gray-400 mb-1">전략명</div>
+          <div className="font-bold text-gray-900">{getStrategyName(plan)}</div>
+        </div>
+        <div className="bg-white rounded-[1.25rem] border border-gray-100 p-4">
+          <div className="text-xs text-gray-400 mb-1">표시 종목</div>
+          <div className="font-bold text-gray-900">{plan.symbol}</div>
+        </div>
+        <div className="bg-white rounded-[1.25rem] border border-gray-100 p-4">
+          <div className="text-xs text-gray-400 mb-1">보유 기간</div>
+          <div className="font-bold text-gray-900">{plan.holding_period}</div>
+        </div>
+        <div className="bg-white rounded-[1.25rem] border border-gray-100 p-4">
+          <div className="text-xs text-gray-400 mb-1">작성일</div>
+          <div className="font-bold text-gray-900">{formatDateTime(plan.created_at)}</div>
+        </div>
+      </div>
+
+      <OverrideSummary plan={plan} />
+    </div>
+  );
+}
+
+function SnapshotPlanDetail({ plan }) {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-[1.25rem] border border-indigo-100 bg-indigo-50 px-4 py-4 text-sm text-indigo-800 leading-relaxed">
+        이 계획은 저장 당시의 전략 평가 스냅샷을 그대로 보여줍니다. My Plans에서는 조건을 다시 계산하지 않고, 저장된 구역과 규칙만 검토합니다.
+      </div>
+      <StrategyCard
+        definition={plan.strategy_snapshot}
+        evaluation={plan.evaluation_snapshot}
+      />
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-base font-bold text-gray-900">
+          <ShieldCheck className="w-4 h-4 text-indigo-600" />
+          저장된 오버라이드
+        </div>
+        {hasOverrideValues(plan) ? (
+          <OverrideSummary plan={plan} />
+        ) : (
+          <div className="rounded-[1.25rem] border border-dashed border-gray-200 bg-white px-4 py-4 text-sm text-gray-500">
+            이 계획에는 추가 숫자 오버라이드가 없습니다. 저장된 buy zone / stop rule / target review zone을 그대로 기준으로 봅니다.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function MyPlansPage() {
   const [activeFilter, setActiveFilter] = useState("all");
@@ -94,20 +244,14 @@ export default function MyPlansPage() {
   const [savingId, setSavingId] = useState("");
   const [deletingId, setDeletingId] = useState("");
 
-  const headers = useMemo(
-    () => ({
-      "Content-Type": "application/json",
-      "X-User-Id": getPlannerUserId(),
-    }),
-    []
-  );
+  const headers = useMemo(() => getPlannerHeaders(), []);
 
   const loadPlans = useCallback(async (filter = activeFilter) => {
     try {
       setLoading(true);
       setError("");
       const query = filter === "all" ? "" : `?status=${filter}`;
-      const data = await fetchJson(`${API_BASE}/plans${query}`, { headers });
+      const data = await fetchJson(`${PLANNER_API_BASE}/plans${query}`, { headers });
       setPlans(data);
     } catch (loadError) {
       setError(loadError.message);
@@ -124,6 +268,7 @@ export default function MyPlansPage() {
     if (expandedId === planId) {
       setExpandedId("");
       setEditingId("");
+      setDetailError("");
       return;
     }
 
@@ -137,7 +282,7 @@ export default function MyPlansPage() {
 
     try {
       setDetailLoadingId(planId);
-      const detail = await fetchJson(`${API_BASE}/plans/${planId}`, { headers });
+      const detail = await fetchJson(`${PLANNER_API_BASE}/plans/${planId}`, { headers });
       setDetailMap((current) => ({ ...current, [planId]: detail }));
     } catch (loadError) {
       setDetailError(loadError.message);
@@ -147,16 +292,9 @@ export default function MyPlansPage() {
   };
 
   const startEditing = (plan) => {
+    setDetailError("");
     setEditingId(plan.plan_id);
-    setEditForm({
-      stop_loss_price: String(plan.stop_loss_price),
-      target_price: String(plan.target_price),
-      position_size_pct: String(plan.position_size_pct),
-      holding_period: plan.holding_period,
-      one_line_reason: plan.one_line_reason,
-      note: plan.note ?? "",
-      status: plan.status,
-    });
+    setEditForm(buildEditForm(plan));
   };
 
   const handleEditChange = (field, value) => {
@@ -164,19 +302,43 @@ export default function MyPlansPage() {
   };
 
   const saveEdit = async (planId) => {
+    const entryPriceOverride = parseOptionalNumber(editForm.entry_price_override);
+    const stopLossPriceOverride = parseOptionalNumber(editForm.stop_loss_price_override);
+    const targetPriceOverride = parseOptionalNumber(editForm.target_price_override);
+    const positionSizeOverridePct = parseOptionalNumber(editForm.position_size_override_pct);
+
+    if (
+      [entryPriceOverride, stopLossPriceOverride, targetPriceOverride, positionSizeOverridePct].some((value) =>
+        Number.isNaN(value)
+      )
+    ) {
+      setDetailError("숫자 오버라이드에는 올바른 값만 입력해 주세요.");
+      return;
+    }
+    if (!editForm.holding_period.trim()) {
+      setDetailError("보유 기간은 비워둘 수 없어요.");
+      return;
+    }
+    if (!editForm.one_line_reason.trim()) {
+      setDetailError("한 줄 이유는 비워둘 수 없어요.");
+      return;
+    }
+
     try {
       setSavingId(planId);
+      setDetailError("");
       const payload = {
-        stop_loss_price: Number(editForm.stop_loss_price),
-        target_price: Number(editForm.target_price),
-        position_size_pct: Number(editForm.position_size_pct),
-        holding_period: editForm.holding_period,
+        entry_price_override: entryPriceOverride,
+        stop_loss_price_override: stopLossPriceOverride,
+        target_price_override: targetPriceOverride,
+        position_size_override_pct: positionSizeOverridePct,
+        holding_period: editForm.holding_period.trim(),
         one_line_reason: editForm.one_line_reason.trim(),
         note: editForm.note.trim(),
         status: editForm.status,
       };
 
-      const updated = await fetchJson(`${API_BASE}/plans/${planId}`, {
+      const updated = await fetchJson(`${PLANNER_API_BASE}/plans/${planId}`, {
         method: "PUT",
         headers,
         body: JSON.stringify(payload),
@@ -205,7 +367,7 @@ export default function MyPlansPage() {
 
     try {
       setDeletingId(planId);
-      await fetchJson(`${API_BASE}/plans/${planId}`, {
+      await fetchJson(`${PLANNER_API_BASE}/plans/${planId}`, {
         method: "DELETE",
         headers,
       });
@@ -235,9 +397,9 @@ export default function MyPlansPage() {
               <ClipboardList className="w-4 h-4" />
               내 매수 계획
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">저장된 첫 매수 플랜</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">저장된 전략 스냅샷과 매수 계획</h1>
             <p className="text-sm md:text-base text-gray-500 max-w-2xl">
-              저장한 계획을 다시 보고, 상세 내용을 확인한 뒤 필요하면 수정하거나 삭제할 수 있어요.
+              저장된 평가 스냅샷을 그대로 다시 보고, 필요한 경우 오버라이드 값과 메모만 수정할 수 있어요.
             </p>
           </div>
 
@@ -283,12 +445,12 @@ export default function MyPlansPage() {
         {!loading && !error && plans.length === 0 && (
           <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-sm p-10 text-center">
             <div className="text-xl font-bold text-gray-900 mb-2">아직 저장된 계획이 없어요</div>
-            <p className="text-gray-500 mb-6">종목과 전략을 먼저 고른 뒤, 첫 매수 계획을 하나 만들어보세요.</p>
+            <p className="text-gray-500 mb-6">먼저 `/strategies`에서 전략을 비교하고, 하나의 평가 스냅샷을 선택해 계획을 만들어 보세요.</p>
             <Link
-              to="/planner"
+              to="/strategies"
               className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700"
             >
-              매수 플래너로 가기
+              전략 보러 가기
             </Link>
           </div>
         )}
@@ -297,8 +459,8 @@ export default function MyPlansPage() {
           <div className="space-y-4">
             {plans.map((plan) => {
               const detail = detailMap[plan.plan_id] ?? plan;
-              const strategy = detail.strategy_snapshot ?? {};
-              const style = STYLE_MAP[strategy.style] ?? STYLE_MAP.technical;
+              const snapshotBacked = isSnapshotBacked(detail);
+              const style = getStrategyStyle(detail);
               const isExpanded = expandedId === plan.plan_id;
               const isEditing = editingId === plan.plan_id;
 
@@ -315,30 +477,58 @@ export default function MyPlansPage() {
                             {style.label}
                           </span>
                           <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600">
-                            {plan.status === "draft" ? "임시저장" : "저장됨"}
+                            {STATUS_LABELS[plan.status] ?? plan.status}
                           </span>
-                          <span className="text-xs text-gray-400">{formatDate(plan.created_at)}</span>
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${
+                            snapshotBacked
+                              ? "bg-indigo-50 text-indigo-700 border-indigo-100"
+                              : "bg-amber-50 text-amber-700 border-amber-100"
+                          }`}>
+                            {snapshotBacked ? "스냅샷 기반" : "기존 계획"}
+                          </span>
+                          <span className="text-xs text-gray-400">{formatDateTime(plan.created_at)}</span>
                         </div>
                         <div>
-                          <div className="text-xl font-bold text-gray-900">{plan.symbol}</div>
-                          <div className="text-sm text-gray-500">{strategy.name}</div>
+                          <div className="text-xl font-bold text-gray-900">{getDisplaySymbol(detail)}</div>
+                          <div className="text-sm text-gray-500">
+                            {getStrategyName(detail)} · {getDisplaySymbolMeta(detail)}
+                          </div>
                         </div>
                         <div className="text-sm text-gray-600">{plan.one_line_reason}</div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-3 text-sm min-w-0">
-                        <div className="bg-gray-50 rounded-2xl p-4">
-                          <div className="text-xs text-gray-400 mb-1">손절가</div>
-                          <div className="font-bold text-gray-900">{plan.stop_loss_price}</div>
-                        </div>
-                        <div className="bg-gray-50 rounded-2xl p-4">
-                          <div className="text-xs text-gray-400 mb-1">목표가</div>
-                          <div className="font-bold text-gray-900">{plan.target_price}</div>
-                        </div>
-                        <div className="bg-gray-50 rounded-2xl p-4">
-                          <div className="text-xs text-gray-400 mb-1">비중</div>
-                          <div className="font-bold text-gray-900">{plan.position_size_pct}%</div>
-                        </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-0">
+                        {snapshotBacked ? (
+                          <>
+                            <div className="bg-gray-50 rounded-2xl p-4">
+                              <div className="text-xs text-gray-400 mb-1">매수 구역</div>
+                              <div className="font-bold text-gray-900">{formatPriceZone(detail.evaluation_snapshot.buy_zone)}</div>
+                            </div>
+                            <div className="bg-gray-50 rounded-2xl p-4">
+                              <div className="text-xs text-gray-400 mb-1">목표 재검토</div>
+                              <div className="font-bold text-gray-900">{formatPriceZone(detail.evaluation_snapshot.target_review_zone)}</div>
+                            </div>
+                            <div className="bg-gray-50 rounded-2xl p-4">
+                              <div className="text-xs text-gray-400 mb-1">오버라이드</div>
+                              <div className="font-bold text-gray-900">{hasOverrideValues(detail) ? "있음" : "없음"}</div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="bg-gray-50 rounded-2xl p-4">
+                              <div className="text-xs text-gray-400 mb-1">매수 오버라이드</div>
+                              <div className="font-bold text-gray-900">{formatOverridePrice(detail.entry_price_override)}</div>
+                            </div>
+                            <div className="bg-gray-50 rounded-2xl p-4">
+                              <div className="text-xs text-gray-400 mb-1">손절 오버라이드</div>
+                              <div className="font-bold text-gray-900">{formatOverridePrice(detail.stop_loss_price_override)}</div>
+                            </div>
+                            <div className="bg-gray-50 rounded-2xl p-4">
+                              <div className="text-xs text-gray-400 mb-1">목표 오버라이드</div>
+                              <div className="font-bold text-gray-900">{formatOverridePrice(detail.target_price_override)}</div>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -378,22 +568,16 @@ export default function MyPlansPage() {
 
                       {!isEditing && (
                         <div className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                            <div className="bg-white rounded-[1.25rem] border border-gray-100 p-4">
-                              <div className="text-xs text-gray-400 mb-1">전략명</div>
-                              <div className="font-bold text-gray-900">{strategy.name}</div>
-                            </div>
-                            <div className="bg-white rounded-[1.25rem] border border-gray-100 p-4">
-                              <div className="text-xs text-gray-400 mb-1">작성일</div>
-                              <div className="font-bold text-gray-900">{formatDate(detail.created_at)}</div>
-                            </div>
-                            <div className="bg-white rounded-[1.25rem] border border-gray-100 p-4">
-                              <div className="text-xs text-gray-400 mb-1">매수 희망가</div>
-                              <div className="font-bold text-gray-900">{detail.entry_price}</div>
-                            </div>
+                          {snapshotBacked ? <SnapshotPlanDetail plan={detail} /> : <LegacyPlanDetail plan={detail} />}
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="bg-white rounded-[1.25rem] border border-gray-100 p-4">
                               <div className="text-xs text-gray-400 mb-1">보유 기간</div>
                               <div className="font-bold text-gray-900">{detail.holding_period}</div>
+                            </div>
+                            <div className="bg-white rounded-[1.25rem] border border-gray-100 p-4">
+                              <div className="text-xs text-gray-400 mb-1">상태</div>
+                              <div className="font-bold text-gray-900">{STATUS_LABELS[detail.status] ?? detail.status}</div>
                             </div>
                           </div>
 
@@ -416,72 +600,97 @@ export default function MyPlansPage() {
                               className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700"
                             >
                               <PencilLine className="w-4 h-4" />
-                              수정하기
+                              오버라이드 수정
                             </button>
                           </div>
                         </div>
                       )}
 
                       {isEditing && editForm && (
-                        <div className="space-y-4">
+                        <div className="space-y-5">
+                          <div className="text-base font-bold text-gray-900">허용된 필드만 수정</div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <input
-                              type="number"
-                              value={editForm.stop_loss_price}
-                              onChange={(event) => handleEditChange("stop_loss_price", event.target.value)}
-                              className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none"
-                              placeholder="손절가"
-                            />
-                            <input
-                              type="number"
-                              value={editForm.target_price}
-                              onChange={(event) => handleEditChange("target_price", event.target.value)}
-                              className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none"
-                              placeholder="목표가"
-                            />
-                            <input
-                              type="number"
-                              value={editForm.position_size_pct}
-                              onChange={(event) => handleEditChange("position_size_pct", event.target.value)}
-                              className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none"
-                              placeholder="비중"
-                            />
-                            <select
-                              value={editForm.holding_period}
-                              onChange={(event) => handleEditChange("holding_period", event.target.value)}
-                              className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                            <Field
+                              label="매수 가격 오버라이드"
+                              hint={snapshotBacked ? `저장된 buy zone: ${formatPriceZone(detail.evaluation_snapshot.buy_zone)}` : "기존 계획의 선택 입력 값입니다."}
                             >
-                              {["1주", "2주", "1개월", "3개월", "6개월", "1년", "기타"].map((option) => (
-                                <option key={option} value={option}>
-                                  {option}
-                                </option>
-                              ))}
-                            </select>
-                            <select
-                              value={editForm.status}
-                              onChange={(event) => handleEditChange("status", event.target.value)}
-                              className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                              <TextInput
+                                type="number"
+                                value={editForm.entry_price_override}
+                                onChange={(event) => handleEditChange("entry_price_override", event.target.value)}
+                                placeholder="비워두면 미설정"
+                              />
+                            </Field>
+
+                            <Field
+                              label="손절 가격 오버라이드"
+                              hint={snapshotBacked ? detail.evaluation_snapshot.stop_invalidation_rule.rule_text : "기존 계획의 선택 입력 값입니다."}
                             >
-                              <option value="saved">저장됨</option>
-                              <option value="draft">임시저장</option>
-                            </select>
+                              <TextInput
+                                type="number"
+                                value={editForm.stop_loss_price_override}
+                                onChange={(event) => handleEditChange("stop_loss_price_override", event.target.value)}
+                                placeholder="비워두면 미설정"
+                              />
+                            </Field>
+
+                            <Field
+                              label="목표 재검토 오버라이드"
+                              hint={snapshotBacked ? `저장된 target review zone: ${formatPriceZone(detail.evaluation_snapshot.target_review_zone)}` : "기존 계획의 선택 입력 값입니다."}
+                            >
+                              <TextInput
+                                type="number"
+                                value={editForm.target_price_override}
+                                onChange={(event) => handleEditChange("target_price_override", event.target.value)}
+                                placeholder="비워두면 미설정"
+                              />
+                            </Field>
+
+                            <Field label="첫 비중 오버라이드(%)" hint="선택 입력입니다.">
+                              <TextInput
+                                type="number"
+                                value={editForm.position_size_override_pct}
+                                onChange={(event) => handleEditChange("position_size_override_pct", event.target.value)}
+                                placeholder="비워두면 미설정"
+                              />
+                            </Field>
+
+                            <Field label="보유 기간" hint="수정 가능한 메모성 필드입니다.">
+                              <TextInput
+                                value={editForm.holding_period}
+                                onChange={(event) => handleEditChange("holding_period", event.target.value)}
+                                placeholder="예: 2주"
+                              />
+                            </Field>
+
+                            <Field label="상태" hint="저장됨 또는 임시저장만 선택할 수 있어요.">
+                              <select
+                                value={editForm.status}
+                                onChange={(event) => handleEditChange("status", event.target.value)}
+                                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                              >
+                                <option value="saved">저장됨</option>
+                                <option value="draft">임시저장</option>
+                              </select>
+                            </Field>
                           </div>
 
-                          <input
-                            type="text"
-                            value={editForm.one_line_reason}
-                            onChange={(event) => handleEditChange("one_line_reason", event.target.value)}
-                            className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none"
-                            placeholder="매수 이유 한 줄"
-                          />
+                          <Field label="한 줄 이유" hint="계획의 핵심 이유만 짧게 유지하세요.">
+                            <TextInput
+                              value={editForm.one_line_reason}
+                              onChange={(event) => handleEditChange("one_line_reason", event.target.value)}
+                              placeholder="예: 저장된 buy zone 근처에서 다시 검토"
+                            />
+                          </Field>
 
-                          <textarea
-                            rows={4}
-                            value={editForm.note}
-                            onChange={(event) => handleEditChange("note", event.target.value)}
-                            className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
-                            placeholder="메모"
-                          />
+                          <Field label="메모" hint="기록용 메모만 수정합니다.">
+                            <TextArea
+                              rows={4}
+                              value={editForm.note}
+                              onChange={(event) => handleEditChange("note", event.target.value)}
+                              placeholder="메모"
+                            />
+                          </Field>
 
                           <div className="flex flex-col sm:flex-row gap-3">
                             <button
