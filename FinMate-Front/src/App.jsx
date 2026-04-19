@@ -138,6 +138,14 @@ const Header = ({ user, onLogout }) => {
           <ClipboardList className="w-4 h-4 mr-1" />
           매수 플래너
         </Link>
+        <Link
+          to="/my-plans"
+          className="hidden md:inline-flex items-center text-sm font-medium
+                     text-gray-600 hover:text-indigo-600 transition-colors"
+        >
+          <ClipboardList className="w-4 h-4 mr-1" />
+          내 계획
+        </Link>
         <button className="relative p-2 hover:bg-gray-100 rounded-full transition-colors group">
           <Bell className="w-5 h-5 text-gray-600 group-hover:text-indigo-600 transition-colors" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
@@ -157,6 +165,20 @@ const Header = ({ user, onLogout }) => {
                 <p className="text-xs text-gray-400 mb-1">접속 계정</p>
                 <p className="text-sm font-bold text-gray-800 truncate">{user?.email}</p>
               </div>
+              <Link
+                to="/planner"
+                onClick={() => setShowMenu(false)}
+                className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
+              >
+                <ClipboardList className="w-4 h-4" /> 매수 플래너
+              </Link>
+              <Link
+                to="/my-plans"
+                onClick={() => setShowMenu(false)}
+                className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
+              >
+                <ClipboardList className="w-4 h-4" /> 내 계획 보기
+              </Link>
               <button onClick={onLogout} className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors">
                 <LogOut className="w-4 h-4" /> 로그아웃
               </button>

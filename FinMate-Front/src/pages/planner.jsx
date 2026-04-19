@@ -3,11 +3,15 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   CheckCircle2,
+  CheckSquare,
   ChevronLeft,
   ClipboardList,
+  Filter,
   Loader2,
   RefreshCw,
   Search,
+  ShieldAlert,
+  XCircle,
 } from "lucide-react";
 
 
@@ -29,7 +33,7 @@ const DEMO_STOCKS = [
 
 const STEP_LABELS = [
   "종목 선택",
-  "전략 비교",
+  "전략 탐색",
   "전략 상세",
   "계획 입력",
   "저장 완료",
@@ -52,6 +56,14 @@ const STYLE_MAP = {
     accent: "text-amber-600",
   },
 };
+
+const STYLE_FILTERS = [
+  { id: "all", label: "전체" },
+  { id: "beginner", label: "초보 우선" },
+  { id: "technical", label: "기술적" },
+  { id: "fundamental", label: "펀더멘털" },
+  { id: "hybrid", label: "하이브리드" },
+];
 
 const INITIAL_FORM = {
   entry_price: "",
@@ -126,10 +138,23 @@ function calcRiskReward(entryPrice, stopLossPrice, targetPrice) {
 }
 
 
+function filterAndSortTemplates(templates, styleFilter) {
+  let filtered = templates;
+  if (styleFilter === "beginner") {
+    filtered = [...templates].sort(
+      (a, b) => (a.beginner_priority ?? 99) - (b.beginner_priority ?? 99)
+    );
+  } else if (styleFilter !== "all") {
+    filtered = templates.filter((t) => t.style === styleFilter);
+  }
+  return filtered;
+}
+
+
 function PlannerHeader({ step }) {
   return (
     <div className="flex flex-col gap-6 mb-8">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-xs font-semibold text-indigo-700 mb-3">
             <ClipboardList className="w-4 h-4" />
@@ -141,13 +166,22 @@ function PlannerHeader({ step }) {
           </p>
         </div>
 
-        <Link
-          to="/"
-          className="inline-flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-indigo-600 px-3 py-2 rounded-full hover:bg-white border border-transparent hover:border-indigo-100 shadow-sm"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          대시보드로 돌아가기
-        </Link>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 self-stretch lg:self-auto">
+          <Link
+            to="/my-plans"
+            className="inline-flex items-center justify-center gap-1 whitespace-nowrap text-sm font-medium text-indigo-600 hover:text-indigo-700 px-3 py-2 rounded-full bg-white border border-indigo-100 shadow-sm"
+          >
+            <ClipboardList className="w-4 h-4" />
+            내 계획 보기
+          </Link>
+          <Link
+            to="/"
+            className="inline-flex items-center justify-center gap-1 whitespace-nowrap text-sm font-medium text-gray-500 hover:text-indigo-600 px-3 py-2 rounded-full hover:bg-white border border-transparent hover:border-indigo-100 shadow-sm"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            대시보드로 돌아가기
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -177,6 +211,82 @@ function PlannerHeader({ step }) {
 }
 
 
+function StyleFilterTabs({ activeFilter, onChange, templateCounts }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {STYLE_FILTERS.map((filter) => {
+        const count = filter.id === "all"
+          ? templateCounts.total
+          : filter.id === "beginner"
+            ? templateCounts.total
+            : templateCounts[filter.id] ?? 0;
+        return (
+          <button
+            key={filter.id}
+            type="button"
+            onClick={() => onChange(filter.id)}
+            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition ${
+              activeFilter === filter.id
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
+                : "bg-white text-gray-500 border border-gray-200 hover:text-indigo-600"
+            }`}
+          >
+            {filter.id === "beginner" && <Filter className="w-3.5 h-3.5" />}
+            {filter.label}
+            <span className={`text-xs ${activeFilter === filter.id ? "text-indigo-200" : "text-gray-400"}`}>
+              {count}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+
+function StrategyCardCompact({ template, onClick }) {
+  const style = STYLE_MAP[template.style] ?? STYLE_MAP.technical;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-left bg-white rounded-[1.5rem] border border-gray-100 shadow-sm p-5 hover:-translate-y-1 hover:shadow-md transition flex flex-col"
+    >
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${style.badge}`}>
+          {style.label}
+        </span>
+        {template.beginner_priority != null && template.beginner_priority <= 3 && (
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-100">
+            초보 추천
+          </span>
+        )}
+      </div>
+      <div className="text-base font-bold text-gray-900 mb-1.5">{template.name}</div>
+      <div className="text-sm text-gray-600 leading-relaxed mb-3 line-clamp-3">
+        {template.one_line_summary || template.summary}
+      </div>
+      {template.when_it_fits_beginner && (
+        <div className="flex items-start gap-1.5 text-xs text-emerald-700 bg-emerald-50 rounded-lg px-2.5 py-1.5 mb-2">
+          <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+          <span className="line-clamp-2">{template.when_it_fits_beginner}</span>
+        </div>
+      )}
+      {template.when_it_does_not_fit_beginner && (
+        <div className="flex items-start gap-1.5 text-xs text-red-600 bg-red-50 rounded-lg px-2.5 py-1.5 mb-2">
+          <XCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+          <span className="line-clamp-2">{template.when_it_does_not_fit_beginner}</span>
+        </div>
+      )}
+      <div className="mt-auto pt-3 flex items-center justify-between">
+        <span className="text-xs text-gray-400">{template.holding_period}</span>
+        <span className={`text-sm font-semibold ${style.accent}`}>자세히 보기 →</span>
+      </div>
+    </button>
+  );
+}
+
+
 export default function FirstPurchasePlanner() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -186,6 +296,7 @@ export default function FirstPurchasePlanner() {
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [templatesError, setTemplatesError] = useState("");
   const [templatesLoadedOnce, setTemplatesLoadedOnce] = useState(false);
+  const [styleFilter, setStyleFilter] = useState("beginner");
   const [selectedStrategy, setSelectedStrategy] = useState(null);
   const [strategyDetail, setStrategyDetail] = useState(null);
   const [strategyLoading, setStrategyLoading] = useState(false);
@@ -206,6 +317,21 @@ export default function FirstPurchasePlanner() {
       [stock.name, stock.code, stock.sector].some((value) => value.toLowerCase().includes(keyword))
     );
   }, [searchQuery]);
+
+  const templateCounts = useMemo(() => {
+    const counts = { total: templates.length, technical: 0, fundamental: 0, hybrid: 0 };
+    for (const t of templates) {
+      if (counts[t.style] !== undefined) {
+        counts[t.style]++;
+      }
+    }
+    return counts;
+  }, [templates]);
+
+  const displayedTemplates = useMemo(
+    () => filterAndSortTemplates(templates, styleFilter),
+    [templates, styleFilter]
+  );
 
   const normalizedDraftKey = selectedStock && selectedStrategy
     ? `${selectedStock.name}::${selectedStrategy.id}`
@@ -247,7 +373,7 @@ export default function FirstPurchasePlanner() {
   }, [form, riskReward]);
 
   useEffect(() => {
-    if (step < 2 || templates.length > 0 || templatesLoadedOnce) {
+    if (step < 1 || templates.length > 0 || templatesLoadedOnce) {
       return;
     }
 
@@ -444,86 +570,171 @@ export default function FirstPurchasePlanner() {
     window.sessionStorage.removeItem(DRAFT_KEY);
   };
 
+  const isFundamental = selectedStrategy?.style === "fundamental";
+
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-[#F8F9FD]">
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <PlannerHeader step={step} />
 
+        {/* ===== STEP 1: Stock Selection ===== */}
         {step === 1 && (
-          <section className="bg-white rounded-[1.5rem] border border-gray-100 shadow-sm p-6 md:p-8">
-            <div className="max-w-3xl">
-              <h2 className="text-xl font-bold text-gray-900 mb-2">어떤 종목을 매수하고 싶으신가요?</h2>
-              <p className="text-sm text-gray-500 mb-6">
-                종목명을 직접 입력하거나, 자주 보는 인기 종목 카드에서 시작할 수 있어요.
-              </p>
-            </div>
-
-            <div className="bg-gray-50 border border-gray-100 rounded-[1.5rem] p-4 md:p-5 mb-6">
-              <div className="flex flex-col md:flex-row gap-3">
-                <div className="flex-1 flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3">
-                  <Search className="w-4 h-4 text-gray-400" />
-                  <input
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder="종목명을 직접 입력하세요 (예: 삼성전자)"
-                    className="w-full bg-transparent outline-none text-sm text-gray-700 placeholder:text-gray-400"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={handleCustomStockSubmit}
-                  className="px-4 py-3 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition"
-                >
-                  입력한 종목으로 시작
-                </button>
+          <section className="space-y-6">
+            <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-sm p-6 md:p-8">
+              <div className="max-w-3xl">
+                <h2 className="text-xl font-bold text-gray-900 mb-2">어떤 종목을 매수하고 싶으신가요?</h2>
+                <p className="text-sm text-gray-500 mb-6">
+                  종목명을 직접 입력하거나, 자주 보는 인기 종목 카드에서 시작할 수 있어요.
+                </p>
               </div>
 
-              {searchQuery.trim() && filteredStocks.length === 0 && (
-                <div className="mt-3 text-sm text-gray-500">
-                  검색 결과가 없어도 <span className="font-semibold text-gray-700">{searchQuery.trim()}</span> 이름으로 직접 계획을 만들 수 있어요.
+              <div className="bg-gray-50 border border-gray-100 rounded-[1.5rem] p-4 md:p-5 mb-6">
+                <div className="flex flex-col md:flex-row gap-3">
+                  <div className="flex-1 flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3">
+                    <Search className="w-4 h-4 text-gray-400" />
+                    <input
+                      value={searchQuery}
+                      onChange={(event) => setSearchQuery(event.target.value)}
+                      placeholder="종목명을 직접 입력하세요 (예: 삼성전자)"
+                      className="w-full bg-transparent outline-none text-sm text-gray-700 placeholder:text-gray-400"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCustomStockSubmit}
+                    className="px-4 py-3 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition"
+                  >
+                    입력한 종목으로 시작
+                  </button>
+                </div>
+
+                {searchQuery.trim() && filteredStocks.length === 0 && (
+                  <div className="mt-3 text-sm text-gray-500">
+                    검색 결과가 없어도 <span className="font-semibold text-gray-700">{searchQuery.trim()}</span> 이름으로 직접 계획을 만들 수 있어요.
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-gray-700">인기 종목 카드</h3>
+                {searchQuery.trim() && (
+                  <span className="text-xs text-gray-400">
+                    {filteredStocks.length}개의 결과
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredStocks.map((stock) => (
+                  <button
+                    key={stock.code}
+                    type="button"
+                    onClick={() => handleSelectStock(stock)}
+                    className="text-left bg-white rounded-[1.5rem] border border-gray-100 shadow-sm p-5 hover:-translate-y-1 hover:shadow-md transition"
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div>
+                        <div className="text-lg font-bold text-gray-900">{stock.name}</div>
+                        <div className="text-sm text-gray-400">{stock.code}</div>
+                      </div>
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700">
+                        {stock.sector}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-500 mb-4">참고 가격 {stock.price}</div>
+                    <div className="text-sm font-semibold text-indigo-600">이 종목으로 전략 보기</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Strategy preview (browsable even before stock selection) */}
+            <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-sm p-6 md:p-8">
+              <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-6">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">전략 라이브러리 미리 보기</h3>
+                  <p className="text-sm text-gray-500">
+                    10개의 전략 카드 중 내 상황에 맞는 카드를 탐색해 보세요. 종목을 선택하면 다음 단계에서 바로 비교할 수 있어요.
+                  </p>
+                </div>
+                <div className="text-xs text-gray-400 whitespace-nowrap">
+                  {templates.length}개의 전략 카드
+                </div>
+              </div>
+
+              {templatesLoading && (
+                <div className="rounded-[1.5rem] border border-gray-100 bg-gray-50 p-10 flex items-center justify-center text-gray-500">
+                  <Loader2 className="w-5 h-5 animate-spin mr-3" />
+                  전략 카드를 불러오는 중입니다.
                 </div>
               )}
-            </div>
 
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-gray-700">인기 종목 카드</h3>
-              {searchQuery.trim() && (
-                <span className="text-xs text-gray-400">
-                  {filteredStocks.length}개의 결과
-                </span>
+              {templatesError && (
+                <div className="rounded-[1.5rem] border border-red-100 bg-red-50/40 p-5">
+                  <div className="text-sm text-red-600 mb-3">{templatesError}</div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTemplates([]);
+                      setTemplatesLoadedOnce(false);
+                      setTemplatesError("");
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-900 text-white text-sm font-semibold"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    다시 불러오기
+                  </button>
+                </div>
               )}
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredStocks.map((stock) => (
-                <button
-                  key={stock.code}
-                  type="button"
-                  onClick={() => handleSelectStock(stock)}
-                  className="text-left bg-white rounded-[1.5rem] border border-gray-100 shadow-sm p-5 hover:-translate-y-1 hover:shadow-md transition"
-                >
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div>
-                      <div className="text-lg font-bold text-gray-900">{stock.name}</div>
-                      <div className="text-sm text-gray-400">{stock.code}</div>
-                    </div>
-                    <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700">
-                      {stock.sector}
-                    </span>
+              {!templatesLoading && !templatesError && templates.length > 0 && (
+                <>
+                  <div className="mb-5">
+                    <StyleFilterTabs
+                      activeFilter={styleFilter}
+                      onChange={setStyleFilter}
+                      templateCounts={templateCounts}
+                    />
                   </div>
-                  <div className="text-sm text-gray-500 mb-4">참고 가격 {stock.price}</div>
-                  <div className="text-sm font-semibold text-indigo-600">이 종목으로 전략 보기</div>
-                </button>
-              ))}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {displayedTemplates.map((template) => {
+                      const style = STYLE_MAP[template.style] ?? STYLE_MAP.technical;
+                      return (
+                        <div
+                          key={template.id}
+                          className="bg-gray-50 rounded-[1.5rem] border border-gray-100 p-5"
+                        >
+                          <div className="flex items-start justify-between gap-3 mb-3">
+                            <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${style.badge}`}>
+                              {style.label}
+                            </span>
+                            {template.beginner_priority != null && template.beginner_priority <= 3 && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-100">
+                                초보 추천
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-base font-bold text-gray-900 mb-1.5">{template.name}</div>
+                          <div className="text-sm text-gray-600 leading-relaxed mb-2 line-clamp-3">
+                            {template.one_line_summary || template.summary}
+                          </div>
+                          <div className="text-xs text-gray-400">{template.holding_period}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           </section>
         )}
 
+        {/* ===== STEP 2: Strategy Browse & Select ===== */}
         {step === 2 && (
           <section className="space-y-6">
             <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-sm p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <div className="text-xs font-semibold text-gray-400 mb-1">종목 선택 &gt; 전략 비교</div>
+                <div className="text-xs font-semibold text-gray-400 mb-1">종목 선택 &gt; 전략 탐색</div>
                 <div className="text-lg font-bold text-gray-900">{selectedStock?.name}</div>
                 <div className="text-sm text-gray-500">
                   {selectedStock?.sector} · 참고 가격 {selectedStock?.price}
@@ -567,35 +778,34 @@ export default function FirstPurchasePlanner() {
             )}
 
             {!templatesLoading && !templatesError && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {templates.map((template) => {
-                  const style = STYLE_MAP[template.style] ?? STYLE_MAP.technical;
-                  return (
-                    <button
+              <>
+                <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-sm px-5 py-4">
+                  <StyleFilterTabs
+                    activeFilter={styleFilter}
+                    onChange={setStyleFilter}
+                    templateCounts={templateCounts}
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {displayedTemplates.map((template) => (
+                    <StrategyCardCompact
                       key={template.id}
-                      type="button"
+                      template={template}
                       onClick={() => loadStrategyDetail(template.id)}
-                      className="text-left bg-white rounded-[1.5rem] border border-gray-100 shadow-sm p-6 hover:-translate-y-1 hover:shadow-md transition"
-                    >
-                      <div className="flex items-start justify-between gap-3 mb-5">
-                        <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${style.badge}`}>
-                          {style.label}
-                        </span>
-                        <span className="text-xs text-gray-400">전략 카드</span>
-                      </div>
-                      <div className="text-xl font-bold text-gray-900 mb-2">{template.name}</div>
-                      <div className="text-sm text-gray-600 leading-relaxed mb-4">{template.summary}</div>
-                      <div className="text-sm text-gray-500 mb-2">{template.suitable_situation}</div>
-                      <div className="text-sm text-amber-600 font-medium mb-5">{template.caution_summary}</div>
-                      <div className={`text-sm font-semibold ${style.accent}`}>자세히 보기 →</div>
-                    </button>
-                  );
-                })}
-              </div>
+                    />
+                  ))}
+                </div>
+                {displayedTemplates.length === 0 && (
+                  <div className="text-center text-sm text-gray-400 py-8">
+                    이 필터에 해당하는 전략 카드가 없습니다.
+                  </div>
+                )}
+              </>
             )}
           </section>
         )}
 
+        {/* ===== STEP 3: Strategy Detail ===== */}
         {step === 3 && (
           <section className="space-y-6">
             <div className="flex items-center justify-between gap-4">
@@ -605,7 +815,7 @@ export default function FirstPurchasePlanner() {
                 className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-indigo-600"
               >
                 <ChevronLeft className="w-4 h-4" />
-                전략 비교로 돌아가기
+                전략 목록으로 돌아가기
               </button>
               {selectedStock && (
                 <div className="text-sm text-gray-500">{selectedStock.name} 기준 전략 검토 중</div>
@@ -627,28 +837,72 @@ export default function FirstPurchasePlanner() {
 
             {!strategyLoading && strategyDetail && (
               <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-sm p-6 md:p-8">
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8">
-                  <div>
+                {/* Header */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-3 mb-4">
                     <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${STYLE_MAP[strategyDetail.style]?.badge ?? STYLE_MAP.technical.badge}`}>
                       {STYLE_MAP[strategyDetail.style]?.label ?? "전략"}
                     </span>
-                    <h2 className="text-2xl font-bold text-gray-900 mt-4 mb-2">{strategyDetail.name}</h2>
-                    <p className="text-gray-600 leading-relaxed max-w-3xl">{strategyDetail.summary}</p>
+                    {strategyDetail.evidence_quality && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-gray-200">
+                        근거 수준: {strategyDetail.evidence_quality}
+                      </span>
+                    )}
                   </div>
-                  <div className="text-sm text-gray-500 bg-gray-50 rounded-2xl px-4 py-3 border border-gray-100 max-w-sm">
-                    {strategyDetail.suitable_situation}
-                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">{strategyDetail.name}</h2>
+                  <p className="text-gray-600 leading-relaxed max-w-3xl">
+                    {strategyDetail.one_line_summary || strategyDetail.summary}
+                  </p>
                 </div>
 
+                {/* When it fits / doesn't fit */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  <div className="bg-gray-50 rounded-[1.25rem] border border-gray-100 p-5">
-                    <div className="text-sm font-bold text-gray-900 mb-2">전략 개요</div>
-                    <div className="text-sm text-gray-600 leading-relaxed">{strategyDetail.description}</div>
-                  </div>
-                  <div className="bg-gray-50 rounded-[1.25rem] border border-gray-100 p-5">
-                    <div className="text-sm font-bold text-gray-900 mb-2">핵심 근거</div>
-                    <div className="text-sm text-gray-600 leading-relaxed">{strategyDetail.core_rationale}</div>
-                  </div>
+                  {(strategyDetail.when_it_fits_beginner || strategyDetail.when_it_fits) && (
+                    <div className="bg-emerald-50 border border-emerald-100 rounded-[1.25rem] p-5">
+                      <div className="flex items-center gap-2 text-sm font-bold text-emerald-800 mb-2">
+                        <CheckCircle2 className="w-4 h-4" />
+                        이런 상황에 적합해요
+                      </div>
+                      <div className="text-sm text-emerald-700 leading-relaxed">
+                        {strategyDetail.when_it_fits_beginner || strategyDetail.when_it_fits}
+                      </div>
+                    </div>
+                  )}
+                  {(strategyDetail.when_it_does_not_fit_beginner || strategyDetail.when_it_does_not_fit) && (
+                    <div className="bg-red-50 border border-red-100 rounded-[1.25rem] p-5">
+                      <div className="flex items-center gap-2 text-sm font-bold text-red-800 mb-2">
+                        <XCircle className="w-4 h-4" />
+                        이런 상황에는 맞지 않아요
+                      </div>
+                      <div className="text-sm text-red-700 leading-relaxed">
+                        {strategyDetail.when_it_does_not_fit_beginner || strategyDetail.when_it_does_not_fit}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* General explanation + why people use it */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  {(strategyDetail.general_explanation || strategyDetail.description) && (
+                    <div className="bg-gray-50 rounded-[1.25rem] border border-gray-100 p-5">
+                      <div className="text-sm font-bold text-gray-900 mb-2">전략 개요</div>
+                      <div className="text-sm text-gray-600 leading-relaxed">
+                        {strategyDetail.general_explanation || strategyDetail.description}
+                      </div>
+                    </div>
+                  )}
+                  {(strategyDetail.why_people_use_it || strategyDetail.core_rationale) && (
+                    <div className="bg-gray-50 rounded-[1.25rem] border border-gray-100 p-5">
+                      <div className="text-sm font-bold text-gray-900 mb-2">왜 사람들이 쓰는가</div>
+                      <div className="text-sm text-gray-600 leading-relaxed">
+                        {strategyDetail.why_people_use_it || strategyDetail.core_rationale}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Entry / Stop / Target / Position / Holding */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                   <div className="bg-gray-50 rounded-[1.25rem] border border-gray-100 p-5">
                     <div className="text-sm font-bold text-gray-900 mb-2">진입 힌트</div>
                     <div className="text-sm text-gray-600 leading-relaxed">{strategyDetail.entry_hint}</div>
@@ -665,20 +919,81 @@ export default function FirstPurchasePlanner() {
                     <div className="text-sm font-bold text-gray-900 mb-2">목표가 규칙</div>
                     <div className="text-sm text-gray-600 leading-relaxed">{strategyDetail.target_rule}</div>
                   </div>
+                  <div className="bg-gray-50 rounded-[1.25rem] border border-gray-100 p-5 md:col-span-2">
+                    <div className="text-sm font-bold text-gray-900 mb-2">포지션 규칙</div>
+                    <div className="text-sm text-gray-600 leading-relaxed">{strategyDetail.position_rule}</div>
+                  </div>
                 </div>
 
+                {/* Invalidation condition */}
+                {strategyDetail.invalidation_condition && (
+                  <div className="bg-rose-50 border border-rose-100 rounded-[1.25rem] p-5 mb-6">
+                    <div className="flex items-center gap-2 text-sm font-bold text-rose-800 mb-2">
+                      <ShieldAlert className="w-4 h-4" />
+                      이 전략이 무효화되는 조건
+                    </div>
+                    <div className="text-sm text-rose-700 leading-relaxed">{strategyDetail.invalidation_condition}</div>
+                  </div>
+                )}
+
+                {/* Caution + Limitations */}
                 <div className="bg-amber-50 border border-amber-100 rounded-[1.25rem] p-5 mb-6">
                   <div className="text-sm font-bold text-amber-800 mb-2">주의사항</div>
-                  <div className="text-sm text-amber-700 leading-relaxed">{strategyDetail.caution}</div>
+                  <div className="text-sm text-amber-700 leading-relaxed mb-3">{strategyDetail.caution}</div>
+                  {strategyDetail.limitations && (
+                    <>
+                      <div className="text-sm font-bold text-amber-800 mb-2">한계</div>
+                      <div className="text-sm text-amber-700 leading-relaxed">{strategyDetail.limitations}</div>
+                    </>
+                  )}
                 </div>
 
+                {/* Unsupported claims */}
+                {strategyDetail.unsupported_or_weak_claims && strategyDetail.unsupported_or_weak_claims.length > 0 && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-[1.25rem] p-5 mb-6">
+                    <div className="text-sm font-bold text-gray-700 mb-2">약한 근거 / 주의해서 볼 주장</div>
+                    <ul className="space-y-1.5">
+                      {strategyDetail.unsupported_or_weak_claims.map((claim) => (
+                        <li key={claim} className="flex items-start gap-2 text-sm text-gray-500">
+                          <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-gray-400" />
+                          {claim}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Checklist */}
+                {strategyDetail.checklist_items && strategyDetail.checklist_items.length > 0 && (
+                  <div className="bg-indigo-50 border border-indigo-100 rounded-[1.25rem] p-5 mb-6">
+                    <div className="flex items-center gap-2 text-sm font-bold text-indigo-800 mb-3">
+                      <CheckSquare className="w-4 h-4" />
+                      진입 전 체크리스트
+                    </div>
+                    <ul className="space-y-2">
+                      {strategyDetail.checklist_items.map((item) => (
+                        <li key={item} className="flex items-start gap-2 text-sm text-indigo-700">
+                          <span className="mt-1 w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Sources + evidence */}
                 <div className="bg-gray-50 rounded-[1.25rem] border border-gray-100 p-5 mb-8">
                   <div className="text-sm font-bold text-gray-900 mb-2">출처</div>
                   <ul className="space-y-2 text-sm text-gray-600">
-                    {strategyDetail.source.map((sourceItem) => (
+                    {(strategyDetail.source_note || strategyDetail.source || []).map((sourceItem) => (
                       <li key={sourceItem}>{sourceItem}</li>
                     ))}
                   </ul>
+                  {strategyDetail.evidence_quality && (
+                    <div className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-500 leading-relaxed">
+                      근거 수준: {strategyDetail.evidence_quality}
+                    </div>
+                  )}
                 </div>
 
                 <button
@@ -697,6 +1012,7 @@ export default function FirstPurchasePlanner() {
           </section>
         )}
 
+        {/* ===== STEP 4: Plan Input ===== */}
         {step === 4 && selectedStrategy && (
           <section className="space-y-6">
             <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-sm p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -721,6 +1037,31 @@ export default function FirstPurchasePlanner() {
                 전략 상세로 돌아가기
               </button>
             </div>
+
+            {/* Fundamental thesis invalidation banner */}
+            {isFundamental && selectedStrategy.invalidation_condition && (
+              <div className="bg-rose-50 border border-rose-100 rounded-[1.5rem] p-5">
+                <div className="flex items-center gap-2 text-sm font-bold text-rose-800 mb-2">
+                  <ShieldAlert className="w-4 h-4" />
+                  Thesis 무효화 조건 (가격보다 중요)
+                </div>
+                <div className="text-sm text-rose-700 leading-relaxed">{selectedStrategy.invalidation_condition}</div>
+                <div className="mt-3 text-xs text-rose-500">
+                  펀더멘털 전략에서는 가격 손절보다 thesis 훼손 여부가 더 중요합니다. 메모에 다음 공시 점검 포인트를 함께 적어두세요.
+                </div>
+              </div>
+            )}
+
+            {/* Technical/hybrid invalidation reminder */}
+            {!isFundamental && selectedStrategy.invalidation_condition && (
+              <div className="bg-rose-50/60 border border-rose-100 rounded-[1.5rem] p-4">
+                <div className="flex items-center gap-2 text-sm font-bold text-rose-700 mb-1">
+                  <ShieldAlert className="w-4 h-4" />
+                  무효화 조건
+                </div>
+                <div className="text-sm text-rose-600">{selectedStrategy.invalidation_condition}</div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-6">
               <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-sm p-6 md:p-8">
@@ -806,13 +1147,24 @@ export default function FirstPurchasePlanner() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">메모</label>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      메모
+                      {isFundamental && (
+                        <span className="ml-2 text-xs font-normal text-rose-500">
+                          (다음 공시 점검 포인트를 여기에 적어두세요)
+                        </span>
+                      )}
+                    </label>
                     <textarea
                       rows={4}
                       value={form.note}
                       onChange={(event) => handleFormChange("note", event.target.value)}
                       className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
-                      placeholder="체크할 리스크나 관찰 포인트를 적어두세요."
+                      placeholder={
+                        isFundamental
+                          ? "체크할 리스크, 다음 공시 확인 포인트, thesis 재검토 기준을 적어두세요."
+                          : "체크할 리스크나 관찰 포인트를 적어두세요."
+                      }
                     />
                   </div>
                 </div>
@@ -934,6 +1286,7 @@ export default function FirstPurchasePlanner() {
           </section>
         )}
 
+        {/* ===== STEP 5: Saved ===== */}
         {step === 5 && savedPlan && (
           <section className="bg-white rounded-[1.5rem] border border-gray-100 shadow-sm p-8 md:p-10 text-center">
             <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-5">

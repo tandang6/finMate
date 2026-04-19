@@ -18,22 +18,38 @@ VALID_STATUSES = {"draft", "saved"}
 
 
 class StrategyTemplate(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     id: str
     name: str
     style: str
-    summary: str
-    description: str
-    core_rationale: str
+    # v1 library fields
+    one_line_summary: Optional[str] = None
+    general_explanation: Optional[str] = None
+    why_people_use_it: Optional[str] = None
+    when_it_fits_beginner: Optional[str] = None
+    when_it_does_not_fit_beginner: Optional[str] = None
     entry_hint: str
+    invalidation_condition: Optional[str] = None
     stop_rule: str
     target_rule: str
     position_rule: str
     holding_period: str
+    checklist_items: Optional[List[str]] = None
     caution: str
-    source: List[str]
-    suitable_situation: str
-    caution_summary: str
+    limitations: Optional[str] = None
+    source_note: Optional[List[str]] = None
+    evidence_quality: Optional[str] = None
+    unsupported_or_weak_claims: Optional[List[str]] = None
+    beginner_priority: Optional[int] = None
     disclaimer: str
+    # legacy fields kept for backward compatibility with old snapshots
+    summary: Optional[str] = None
+    description: Optional[str] = None
+    core_rationale: Optional[str] = None
+    source: Optional[List[str]] = None
+    suitable_situation: Optional[str] = None
+    caution_summary: Optional[str] = None
 
 
 class PlanCreateRequest(BaseModel):
