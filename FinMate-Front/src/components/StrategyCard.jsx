@@ -147,7 +147,7 @@ export default function StrategyCard({ definition, evaluation, onCreatePlan }) {
             </div>
           ) : (
             <div className="rounded-[1.25rem] border border-dashed border-gray-200 bg-gray-50 px-4 py-4 text-sm text-gray-600 leading-relaxed">
-              이 카드는 현재 실시간 평가 대상이 아니에요. 활성화 상태와 준비 사유만 안내합니다.
+              이 카드는 현재 V1 일봉 평가 대상이 아니에요. 활성화 상태와 준비 사유만 안내합니다.
             </div>
           )}
         </section>
@@ -156,17 +156,17 @@ export default function StrategyCard({ definition, evaluation, onCreatePlan }) {
           <InfoPanel
             icon={Target}
             title="매수 구역"
-            body={evaluation ? formatPriceZone(evaluation.buy_zone) : "실시간 평가가 열리면 이 영역이 표시됩니다."}
+            body={evaluation ? formatPriceZone(evaluation.buy_zone) : "현재 V1에서는 숫자 매수 구역을 제공하지 않습니다."}
           />
           <InfoPanel
             icon={ShieldAlert}
             title="무효화 규칙"
-            body={evaluation ? evaluation.stop_invalidation_rule.rule_text : "실시간 평가가 열리면 손절 무효화 규칙이 표시됩니다."}
+            body={evaluation ? evaluation.stop_invalidation_rule.rule_text : "현재 V1에서는 무효화 규칙을 평가하지 않습니다."}
           />
           <InfoPanel
             icon={Flag}
             title="목표 재검토 구역"
-            body={evaluation ? formatPriceZone(evaluation.target_review_zone) : "실시간 평가가 열리면 목표 재검토 구역이 표시됩니다."}
+            body={evaluation ? formatPriceZone(evaluation.target_review_zone) : "현재 V1에서는 목표 재검토 구역을 제공하지 않습니다."}
           />
         </div>
 
@@ -174,7 +174,7 @@ export default function StrategyCard({ definition, evaluation, onCreatePlan }) {
           <InfoPanel
             icon={Compass}
             title="첫 비중 가이드"
-            body={evaluation ? evaluation.first_position_rule : "실시간 평가가 열리면 첫 비중 가이드가 표시됩니다."}
+            body={evaluation ? evaluation.first_position_rule : "현재 V1에서는 첫 비중 가이드를 제공하지 않습니다."}
             subtle
           />
           <InfoPanel
@@ -185,7 +185,7 @@ export default function StrategyCard({ definition, evaluation, onCreatePlan }) {
           />
           <InfoPanel
             icon={AlertTriangle}
-            title={evaluation ? "why_this_plan" : "현재 상태"}
+            title={evaluation ? "현재 판단 근거" : "현재 상태"}
             body={statusReason}
             subtle
           />

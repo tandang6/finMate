@@ -146,12 +146,12 @@ describe("strategies to planner handoff", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText("/strategies에서만 전략을 비교하고 평가해요")).toBeInTheDocument();
+    expect(await screen.findByText("지원 종목의 일봉 조건을 전략별로 정리해요")).toBeInTheDocument();
 
     fireEvent.click(await screen.findByRole("button", { name: /이 전략으로 계획 만들기/i }));
 
-    expect(await screen.findByText("선택한 평가 스냅샷을 먼저 검토해요")).toBeInTheDocument();
+    expect(await screen.findByText("선택한 평가 스냅샷을 검토하고 계획으로 저장해요")).toBeInTheDocument();
     expect(screen.getByText("삼성전자")).toBeInTheDocument();
-    expect(screen.getByText("저장할 계획 입력")).toBeInTheDocument();
+    expect(screen.getByText("저장할 계획 정리")).toBeInTheDocument();
   });
 });

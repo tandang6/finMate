@@ -13,7 +13,7 @@ export const SUPPORTED_SYMBOLS = [
 ];
 
 export const ACTIVATION_STATE_LABELS = {
-  live: "Live",
+  live: "평가 가능",
   education_only: "교육용",
   blocked_by_data: "데이터 대기",
   deferred: "보류",
@@ -94,14 +94,14 @@ export function clearPlannerSelection() {
 
 export function formatPrice(value) {
   if (!Number.isFinite(value)) {
-    return "실시간 가격대 없음";
+    return "가격 구역 없음";
   }
   return `${new Intl.NumberFormat("ko-KR").format(Math.round(value))}원`;
 }
 
 export function formatPriceZone(zone) {
   if (!zone) {
-    return "실시간 평가 정보가 없어요.";
+    return "평가 정보가 없어요.";
   }
   if (Number.isFinite(zone.lower_price) && Number.isFinite(zone.upper_price)) {
     if (zone.lower_price === zone.upper_price) {

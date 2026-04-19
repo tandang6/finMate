@@ -156,9 +156,9 @@ describe("PlannerReviewPage", () => {
       },
     ]);
 
-    expect(await screen.findByText("선택한 평가 스냅샷을 먼저 검토해요")).toBeInTheDocument();
+    expect(await screen.findByText("선택한 평가 스냅샷을 검토하고 계획으로 저장해요")).toBeInTheDocument();
     expect(await screen.findByText("MA Reclaim")).toBeInTheDocument();
-    expect(await screen.findByText("저장할 계획 입력")).toBeInTheDocument();
+    expect(await screen.findByText("저장할 계획 정리")).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText("예: 2주 동안 일봉 종가 기준으로 추적"), {
       target: { value: "2주 동안 종가 기준 추적" },

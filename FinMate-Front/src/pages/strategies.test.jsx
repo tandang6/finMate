@@ -181,7 +181,7 @@ describe("StrategiesPage", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText("/strategies에서만 전략을 비교하고 평가해요")).toBeInTheDocument();
+    expect(await screen.findByText("지원 종목의 일봉 조건을 전략별로 정리해요")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "적용 가능" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "교육용" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "보류" })).toBeInTheDocument();

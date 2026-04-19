@@ -240,11 +240,11 @@ export default function PlannerReviewPage() {
           <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm px-6 py-8 md:px-8">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-xs font-semibold text-indigo-700 mb-4">
               <ClipboardList className="w-4 h-4" />
-              계획 검토 / 저장
+              스냅샷 검토 / 저장
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-3">검토할 전략 스냅샷이 아직 없어요</h1>
             <p className="text-sm md:text-base text-gray-500 leading-relaxed mb-6">
-              이제 `/planner`는 단독 탐색 화면이 아니라, `/strategies`에서 선택한 평가 스냅샷을 검토하고 저장하는 화면입니다.
+              이제 `/planner`는 단독 탐색 화면이 아니라, `/strategies`에서 선택한 규칙 기반 평가 스냅샷을 검토하고 저장하는 화면입니다.
             </p>
             <Link
               to="/strategies"
@@ -267,12 +267,12 @@ export default function PlannerReviewPage() {
             <div className="max-w-3xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-xs font-semibold text-indigo-700 mb-4">
                 <PencilLine className="w-4 h-4" />
-                계획 검토 / 저장
+                스냅샷 검토 / 저장
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">선택한 평가 스냅샷을 먼저 검토해요</h1>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">선택한 평가 스냅샷을 검토하고 계획으로 저장해요</h1>
               <p className="text-sm md:text-base text-gray-500 leading-relaxed">
-                이 화면은 전략을 다시 추천하지 않습니다. `/strategies`에서 고른 평가 결과를 그대로 보여주고, 필요한 경우에만
-                숫자 오버라이드를 덧붙여 저장합니다.
+                이 화면은 전략을 다시 추천하지 않는 review 단계입니다. `/strategies`에서 고른 규칙 기반 평가 결과를 그대로 보여주고,
+                필요한 경우에만 숫자 오버라이드를 덧붙여 저장합니다.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -311,7 +311,8 @@ export default function PlannerReviewPage() {
           <div className="rounded-[1.5rem] border border-gray-100 bg-white px-5 py-5 shadow-sm">
             <div className="text-xs font-bold uppercase tracking-[0.18em] text-gray-400 mb-2">오버라이드 안내</div>
             <div className="text-sm text-gray-600 leading-relaxed">
-              숫자 입력은 선택 사항입니다. 비워두면 저장된 계획은 평가 스냅샷의 구역과 규칙을 그대로 기준으로 삼습니다.
+              숫자 입력은 선택 사항입니다. 비워두면 저장된 계획은 평가 스냅샷의 구역과 규칙을 그대로 기준으로 삼고,
+              정확한 매수/손절 숫자를 강제하지 않습니다.
             </div>
           </div>
         </section>
@@ -336,7 +337,7 @@ export default function PlannerReviewPage() {
         <section className="bg-white rounded-[1.75rem] border border-gray-100 shadow-sm px-6 py-6 md:px-7 md:py-7">
           <div className="flex items-center gap-2 text-lg font-bold text-gray-900 mb-5">
             <ShieldCheck className="w-5 h-5 text-indigo-600" />
-            저장할 계획 입력
+            저장할 계획 정리
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
@@ -438,6 +439,12 @@ export default function PlannerReviewPage() {
               <div className="text-xs text-emerald-700 mt-2">
                 저장 시각 {formatDateTime(savedPlan.created_at)}
               </div>
+              <Link
+                to="/my-plans"
+                className="inline-flex items-center gap-2 mt-4 rounded-xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+              >
+                저장된 계획 보기
+              </Link>
             </div>
           )}
 

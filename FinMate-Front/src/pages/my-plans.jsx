@@ -395,20 +395,21 @@ export default function MyPlansPage() {
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-xs font-semibold text-indigo-700 mb-3">
               <ClipboardList className="w-4 h-4" />
-              내 매수 계획
+              저장된 계획
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">저장된 전략 스냅샷과 매수 계획</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">저장된 전략 스냅샷과 계획 메모</h1>
             <p className="text-sm md:text-base text-gray-500 max-w-2xl">
-              저장된 평가 스냅샷을 그대로 다시 보고, 필요한 경우 오버라이드 값과 메모만 수정할 수 있어요.
+              저장 당시의 규칙 기반 평가 스냅샷을 다시 보고, 필요한 경우 오버라이드 값과 메모만 수정할 수 있어요.
+              이 화면은 조건을 다시 계산하지 않습니다.
             </p>
           </div>
 
           <Link
-            to="/"
+            to="/strategies"
             className="inline-flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-indigo-600 px-3 py-2 rounded-full hover:bg-white border border-transparent hover:border-indigo-100 shadow-sm"
           >
             <ChevronLeft className="w-4 h-4" />
-            대시보드로 돌아가기
+            전략 화면으로 돌아가기
           </Link>
         </div>
 

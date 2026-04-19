@@ -186,6 +186,16 @@ export default function StrategiesPage() {
     navigate("/planner", { state: { plannerSelection } });
   };
 
+  const sourceName = evaluationResponse?.source?.provider_id === "mock"
+    ? "Slice 1 데모 데이터"
+    : evaluationResponse?.source?.provider_name;
+
+  const sourceMeta = evaluationResponse?.source?.provider_id === "mock"
+    ? "고정 fixture · 규칙 테스트용"
+    : evaluationResponse?.source
+      ? `${evaluationResponse.source.dataset} · ${evaluationResponse.source.provenance}`
+      : "";
+
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-[#F8F9FD]">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -194,22 +204,22 @@ export default function StrategiesPage() {
             <div className="max-w-3xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-xs font-semibold text-indigo-700 mb-4">
                 <Sparkles className="w-4 h-4" />
-                일봉 전략 탐색
+                전략 탐색
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">/strategies에서만 전략을 비교하고 평가해요</h1>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">지원 종목의 일봉 조건을 전략별로 정리해요</h1>
               <p className="text-sm md:text-base text-gray-500 leading-relaxed">
-                지원되는 한국 종목을 기준으로 현재 일봉 조건을 점검하고, 전략 카드를 중립적인 상태별로 묶어 보여드립니다.
-                추천 순위는 제공하지 않고, 계획 저장은 선택한 평가 스냅샷을 그대로 넘깁니다.
+                이 화면은 완성형 투자 추천 서비스가 아니라, 지원되는 한국 종목의 일봉 조건을 규칙 기반으로 점검하는 전략 계획 프로토타입입니다.
+                추천 순위는 제공하지 않고, 선택한 평가 스냅샷만 계획 검토 화면으로 넘깁니다.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-3">
               <Link
-                to="/planner"
+                to="/my-plans"
                 className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-600 hover:text-indigo-600"
               >
                 <ClipboardList className="w-4 h-4" />
-                계획 검토 화면
+                저장된 계획 보기
               </Link>
               <button
                 type="button"
@@ -227,9 +237,6 @@ export default function StrategiesPage() {
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 mb-5">
             <div>
               <h2 className="text-lg font-bold text-gray-900 mb-2">지원 종목 선택</h2>
-              <p className="text-sm text-gray-500">
-                현재 Slice 1은 고정된 한국 종목 유니버스만 평가합니다. 선택한 종목을 기준으로 5개의 live 전략만 점검합니다.
-              </p>
             </div>
             <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 min-w-[280px]">
               <Search className="w-4 h-4 text-gray-400" />
@@ -308,9 +315,9 @@ export default function StrategiesPage() {
                 </div>
                 <div className="rounded-[1.25rem] border border-gray-100 bg-gray-50 px-4 py-4">
                   <div className="text-xs font-bold uppercase tracking-[0.18em] text-gray-400 mb-2">데이터 출처</div>
-                  <div className="text-lg font-bold text-gray-900">{evaluationResponse.source.provider_name}</div>
+                  <div className="text-lg font-bold text-gray-900">{sourceName}</div>
                   <div className="text-sm text-gray-500 mt-1">
-                    {evaluationResponse.source.dataset} · {evaluationResponse.source.provenance}
+                    {sourceMeta}
                   </div>
                 </div>
                 <div className="rounded-[1.25rem] border border-gray-100 bg-gray-50 px-4 py-4">
@@ -354,7 +361,7 @@ export default function StrategiesPage() {
 
               <SectionShell
                 title="데이터 부족"
-                description="데이터 freshness나 coverage가 충분하지 않아 평가를 보수적으로 낮춘 카드입니다."
+                description="데이터 freshness나 coverage가 충분하지 않아 평가를 보수적으로 막아 둔 카드입니다."
                 emptyText="이번 평가에서는 데이터 부족 카드가 없어요."
               >
                 {(liveSections.data_unavailable ?? []).map(({ definition, evaluation }) => (
@@ -399,7 +406,7 @@ export default function StrategiesPage() {
               <div className="text-base font-bold text-gray-900 mb-2">안내</div>
               <div className="text-sm text-gray-600 leading-relaxed">
                 이 화면은 추천 순위나 “지금 가장 좋은 전략”을 제공하지 않습니다. 현재 종목의 일봉 조건을 전략별로 나눠 보여주고,
-                사용자가 하나의 평가 스냅샷을 선택해 계획 검토 화면으로 넘기도록 설계되어 있습니다.
+                사용자가 하나의 평가 스냅샷을 선택해 계획 검토 화면으로 넘기도록 만든 규칙 기반 프로토타입입니다.
               </div>
             </div>
           </div>
