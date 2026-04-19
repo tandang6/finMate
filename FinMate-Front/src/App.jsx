@@ -4,10 +4,12 @@ import {
 } from 'recharts';
 import { 
   Sun, TrendingUp, Bell, Search, User, 
-  ArrowRight, Brain, Calendar, ShieldAlert, Zap, LogOut, ChevronRight, CheckCircle
+  ArrowRight, Brain, Calendar, ShieldAlert, Zap, LogOut, ChevronRight, CheckCircle, ClipboardList
 } from 'lucide-react';
 import { Routes, Route, Link } from 'react-router-dom';
 import EconomicCalendarPage from './pages/calendar';
+import FirstPurchasePlanner from './pages/planner';
+import MyPlansPage from './pages/my-plans';
 
 // --- [DATA] 목업 데이터 (백엔드 없이 작동하기 위한 가짜 데이터) ---
 
@@ -127,6 +129,14 @@ const Header = ({ user, onLogout }) => {
         >
           <Calendar className="w-4 h-4 mr-1" />
           주요 경제 일정
+        </Link>
+        <Link
+          to="/planner"
+          className="hidden md:inline-flex items-center text-sm font-medium
+                     text-gray-600 hover:text-indigo-600 transition-colors"
+        >
+          <ClipboardList className="w-4 h-4 mr-1" />
+          매수 플래너
         </Link>
         <button className="relative p-2 hover:bg-gray-100 rounded-full transition-colors group">
           <Bell className="w-5 h-5 text-gray-600 group-hover:text-indigo-600 transition-colors" />
@@ -711,6 +721,8 @@ const [macroInsight, setMacroInsight] = useState("");
           }
         />
         <Route path="/calendar" element={<EconomicCalendarPage />} />
+        <Route path="/planner" element={<FirstPurchasePlanner />} />
+        <Route path="/my-plans" element={<MyPlansPage />} />
       </Routes>
     </div>
   );
