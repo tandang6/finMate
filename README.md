@@ -6,9 +6,9 @@ FinMate는 금융 초보자가 뉴스, 거시경제 지표, 경제 일정처럼 
 
 ## 데모 영상
 
-<video src="./assets/strategy-planner-demo.mp4" controls width="100%"></video>
+![FinMate 전략 플래너 데모](./assets/strategy-planner-demo.gif)
 
-[FinMate 전략 플래너 데모 영상 보기](./assets/strategy-planner-demo.mp4)
+[FinMate 전략 플래너 데모 GIF 보기](./assets/strategy-planner-demo.gif)
 
 ## 기능: 전략 기반 투자 계획 플래너
 
