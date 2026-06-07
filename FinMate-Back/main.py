@@ -26,6 +26,9 @@ from news_weather import get_news_weather       # 네이버 뉴스 크롤링 + A
 from domino_insight import get_domino_insight   # 거시경제 데이터 기반 AI 인사이트 생성
 
 from calendar_insight import generate_calendar_insight   # ✅ 캘린더 인사이트(해설) 모듈
+from plan_db import init_db
+from plan_routes import router as planner_router
+from strategy_routes import router as strategy_router
 
 # ==============================================================================
 # 1. FastAPI 앱 초기화 및 설정
@@ -47,6 +50,15 @@ app.add_middleware(
     allow_methods=["*"],        # 모든 HTTP 메서드(GET, POST 등) 허용
     allow_headers=["*"],        # 모든 헤더 허용
 )
+
+
+@app.on_event("startup")
+def on_startup():
+    init_db()
+
+
+app.include_router(planner_router, prefix="/api/planner")
+app.include_router(strategy_router, prefix="/api/strategies")
 
 
 # ==============================================================================
