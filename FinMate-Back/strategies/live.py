@@ -169,27 +169,27 @@ def _ma_support_retest_conditions(stock_view: DailySeriesView) -> list[StrategyC
     return [
         StrategyCheck(
             check_id="support_band_alignment",
-            label="Support Band Alignment",
+            label="지지 밴드 정렬",
             status=StrategyCheckStatus.MET if near_support else StrategyCheckStatus.NOT_MET,
-            detail="Latest close remains close enough to the 50-day average to count as a support retest.",
+            detail="지지 재테스트로 인정받기 위해 최근 종가가 50일 평균선에 충분히 가깝습니다.",
             value=f"sma50={sma50:.2f}" if sma50 is not None else None,
         ),
         StrategyCheck(
             check_id="support_defense",
-            label="Support Defense",
+            label="지지선 방어",
             status=StrategyCheckStatus.MET if defended_support else StrategyCheckStatus.NOT_MET,
-            detail="Latest daily range tests the 50-day average without closing below it.",
+            detail="최근 일봉 범위가 50일 평균선을 테스트하되 그 아래에서 종가를 형성하지 않습니다.",
             value=f"low={stock_view.latest_low:.2f}, close={stock_view.latest_close:.2f}",
         ),
         StrategyCheck(
             check_id="recent_room_to_resistance",
-            label="Room To Resistance",
+            label="저항선까지 여유 공간",
             status=(
                 StrategyCheckStatus.MET
                 if recent_high is not None and recent_high >= stock_view.latest_close * 1.03
                 else StrategyCheckStatus.NOT_MET
             ),
-            detail="Recent daily highs leave enough room above the current support retest area.",
+            detail="최근 일봉 고점이 현재 지지 재테스트 구역 위에 충분한 여유를 남겨줍니다.",
             value=f"high20={recent_high:.2f}" if recent_high is not None else None,
         ),
     ]
@@ -213,16 +213,16 @@ def _resistance_breakout_retest_conditions(stock_view: DailySeriesView) -> list[
     return [
         StrategyCheck(
             check_id="prior_resistance_anchor",
-            label="Prior Resistance Anchor",
+            label="이전 저항 앵커",
             status=StrategyCheckStatus.MET if anchor is not None else StrategyCheckStatus.BLOCKED,
-            detail="A prior resistance anchor is available from recent daily highs.",
+            detail="최근 일봉 고점에서 이전 저항 앵커를 확인할 수 있습니다.",
             value=f"{anchor.resistance:.2f}" if anchor is not None else None,
         ),
         StrategyCheck(
             check_id="breakout_extension",
-            label="Breakout Extension",
+            label="돌파 확장",
             status=StrategyCheckStatus.MET if breakout_confirmed else StrategyCheckStatus.NOT_MET,
-            detail="Recent daily highs extend clearly above the prior resistance anchor.",
+            detail="최근 일봉 고점이 이전 저항 앵커를 명확히 상회합니다.",
             value=(
                 f"anchor={anchor.resistance:.2f}, peak={breakout_peak:.2f}"
                 if anchor is not None and breakout_peak is not None
@@ -231,9 +231,9 @@ def _resistance_breakout_retest_conditions(stock_view: DailySeriesView) -> list[
         ),
         StrategyCheck(
             check_id="retest_hold",
-            label="Retest Hold",
+            label="재테스트 유지",
             status=StrategyCheckStatus.MET if retest_hold else StrategyCheckStatus.NOT_MET,
-            detail="Latest daily bar revisits the prior resistance area and still closes above it.",
+            detail="최근 일봉 바가 이전 저항 구역을 재방문하되 여전히 그 위에서 종가를 형성합니다.",
             value=f"low={stock_view.latest_low:.2f}, close={stock_view.latest_close:.2f}",
         ),
     ]
@@ -252,27 +252,27 @@ def _pullback_conditions(stock_view: DailySeriesView) -> list[StrategyCheck]:
     return [
         StrategyCheck(
             check_id="pullback_zone",
-            label="Pullback Zone",
+            label="눌림목 구역",
             status=StrategyCheckStatus.MET if pullback_zone else StrategyCheckStatus.NOT_MET,
-            detail="Latest close sits near the short-term daily pullback area.",
+            detail="최근 종가가 단기 일봉 눌림목 구역 근처에 위치합니다.",
             value=f"sma20={sma20:.2f}" if sma20 is not None else None,
         ),
         StrategyCheck(
             check_id="higher_low_structure",
-            label="Higher-Low Structure",
+            label="고점 상승 구조",
             status=StrategyCheckStatus.MET if higher_low_structure else StrategyCheckStatus.NOT_MET,
-            detail="The latest close remains above medium-term support during the pullback.",
+            detail="눌림목 중에도 최근 종가가 중기 지지선 위를 유지합니다.",
             value=f"sma50={sma50:.2f}" if sma50 is not None else None,
         ),
         StrategyCheck(
             check_id="recovery_room",
-            label="Recovery Room",
+            label="회복 여유 공간",
             status=(
                 StrategyCheckStatus.MET
                 if recent_high is not None and recent_high >= stock_view.latest_close * 1.04
                 else StrategyCheckStatus.NOT_MET
             ),
-            detail="Recent highs still leave room above the current pullback area.",
+            detail="최근 고점이 현재 눌림목 구역 위에 여유 공간을 남겨줍니다.",
             value=f"high20={recent_high:.2f}" if recent_high is not None else None,
         ),
     ]
@@ -285,23 +285,23 @@ def _darvas_range_breakout_conditions(stock_view: DailySeriesView) -> list[Strat
     return [
         StrategyCheck(
             check_id="range_box_detected",
-            label="Range Box Detected",
+            label="레인지 박스 감지",
             status=StrategyCheckStatus.MET if box is not None else StrategyCheckStatus.BLOCKED,
-            detail="A recent daily range box is available for breakout measurement.",
+            detail="돌파 측정을 위한 최근 일봉 레인지 박스가 확인됩니다.",
             value=(f"high={box.high:.2f}, low={box.low:.2f}" if box is not None else None),
         ),
         StrategyCheck(
             check_id="tight_box",
-            label="Tight Box",
+            label="타이트 박스",
             status=StrategyCheckStatus.MET if box_is_tight else StrategyCheckStatus.NOT_MET,
-            detail="The recent daily range is narrow enough to behave like a simple box setup.",
+            detail="최근 일봉 레인지가 단순 박스 셋업으로 작동하기에 충분히 좁습니다.",
             value=f"{box.width_ratio:.3f}" if box is not None else None,
         ),
         StrategyCheck(
             check_id="breakout_close",
-            label="Breakout Close",
+            label="돌파 종가",
             status=StrategyCheckStatus.MET if breakout_close else StrategyCheckStatus.NOT_MET,
-            detail="Latest close is above the top of the recent daily box.",
+            detail="최근 종가가 최근 일봉 박스 상단 위에 있습니다.",
             value=f"close={stock_view.latest_close:.2f}" + (f", box_high={box.high:.2f}" if box is not None else ""),
         ),
     ]
@@ -315,22 +315,22 @@ def _ma_reclaim_conditions(stock_view: DailySeriesView) -> list[StrategyCheck]:
     return [
         StrategyCheck(
             check_id="ma_reclaimed",
-            label="MA Reclaimed",
+            label="이동평균 탈환",
             status=StrategyCheckStatus.MET if reclaimed else StrategyCheckStatus.NOT_MET,
-            detail="Latest close is back above the 50-day average by a meaningful margin.",
+            detail="최근 종가가 50일 평균선 위로 의미 있게 회복됐습니다.",
             value=f"sma50={sma50:.2f}" if sma50 is not None else None,
         ),
         StrategyCheck(
             check_id="recent_undertrade",
-            label="Recent Undertrade",
+            label="최근 이탈 경험",
             status=StrategyCheckStatus.MET if recent_undertrade else StrategyCheckStatus.NOT_MET,
-            detail="Price traded below the same average recently enough for the move to count as a reclaim.",
+            detail="탈환으로 인정받기 위해 같은 평균선 아래에서 최근에 거래된 기록이 있습니다.",
         ),
         StrategyCheck(
             check_id="reclaim_follow_through",
-            label="Reclaim Follow-Through",
+            label="탈환 추가 확인",
             status=StrategyCheckStatus.MET if follow_through else StrategyCheckStatus.NOT_MET,
-            detail="Recent closes stay above the reclaimed average instead of immediately failing back below it.",
+            detail="최근 종가들이 탈환된 평균선 위에서 유지되며 즉시 다시 무너지지 않습니다.",
         ),
     ]
 
@@ -340,18 +340,18 @@ def _ma_support_retest_bundle(stock_view: DailySeriesView) -> tuple[PriceZone, S
     recent_high = stock_view.rolling_high(20) or stock_view.latest_high
     return (
         PriceZone(
-            label="50-Day Support Zone",
-            description="Use the daily support retest area around the 50-day average as the planning zone.",
+            label="50일 지지 구역",
+            description="50일 평균선 근처 일봉 지지 재테스트 구역을 계획 구역으로 사용하세요.",
             lower_price=round(sma50 * 0.99, 2),
             upper_price=round(sma50 * 1.01, 2),
         ),
         StrategyRule(
-            label="50-Day Support Failure",
-            rule_text=f"Invalidate the setup if a daily close loses the 50-day support area near {sma50 * 0.99:.2f}.",
+            label="50일 지지선 이탈",
+            rule_text=f"50일 지지 구역인 {sma50 * 0.99:.2f} 근처에서 일봉이 마감되면 셋업을 무효화합니다.",
         ),
         PriceZone(
-            label="Recent High Review Zone",
-            description="Review the plan as price approaches the recent daily resistance area.",
+            label="최근 고점 재검토 구역",
+            description="가격이 최근 일봉 저항 구역에 접근할 때 계획을 재검토하세요.",
             lower_price=round(recent_high * 0.98, 2),
             upper_price=round(recent_high * 1.01, 2),
         ),
@@ -365,18 +365,18 @@ def _resistance_breakout_retest_bundle(stock_view: DailySeriesView) -> tuple[Pri
     support = anchor.support if anchor is not None else stock_view.latest_low
     return (
         PriceZone(
-            label="Retest Zone",
-            description="Use the prior breakout anchor as the planning zone while it still acts like support.",
+            label="재테스트 구역",
+            description="이전 돌파 앵커가 지지선 역할을 하는 동안 계획 구역으로 사용하세요.",
             lower_price=round(resistance * 0.995, 2),
             upper_price=round(resistance * 1.01, 2),
         ),
         StrategyRule(
-            label="Breakout Failure",
-            rule_text=f"Invalidate the setup if a daily close falls back below the prior breakout area near {resistance * 0.995:.2f}.",
+            label="돌파 실패",
+            rule_text=f"일봉 종가가 이전 돌파 구역인 {resistance * 0.995:.2f} 근처 아래로 내려오면 셋업을 무효화합니다.",
         ),
         PriceZone(
-            label="Breakout Follow-Through Review Zone",
-            description="Review the plan toward the recent breakout extension area.",
+            label="돌파 후속 상승 재검토 구역",
+            description="최근 돌파 확장 구역 방향으로 계획을 재검토하세요.",
             lower_price=round(breakout_peak * 0.99, 2),
             upper_price=round((breakout_peak + (resistance - support)) * 1.01, 2),
         ),
@@ -389,18 +389,18 @@ def _pullback_bundle(stock_view: DailySeriesView) -> tuple[PriceZone, StrategyRu
     recent_high = stock_view.rolling_high(20) or stock_view.latest_high
     return (
         PriceZone(
-            label="Pullback Demand Zone",
-            description="Use the short-term daily pullback area around the 20-day average as the planning zone.",
+            label="눌림목 수요 구역",
+            description="20일 평균선 근처 단기 일봉 눌림목 구역을 계획 구역으로 사용하세요.",
             lower_price=round(sma20 * 0.99, 2),
             upper_price=round(sma20 * 1.01, 2),
         ),
         StrategyRule(
-            label="Pullback Failure",
-            rule_text=f"Invalidate the setup if price closes below the recent pullback support area near {recent_low * 0.99:.2f}.",
+            label="눌림목 실패",
+            rule_text=f"가격이 최근 눌림목 지지 구역인 {recent_low * 0.99:.2f} 근처 아래에서 종가를 형성하면 셋업을 무효화합니다.",
         ),
         PriceZone(
-            label="Prior Swing High Review Zone",
-            description="Review the plan as price approaches the recent swing-high area.",
+            label="이전 스윙 고점 재검토 구역",
+            description="가격이 최근 스윙 고점 구역에 접근할 때 계획을 재검토하세요.",
             lower_price=round(recent_high * 0.98, 2),
             upper_price=round(recent_high * 1.01, 2),
         ),
@@ -418,18 +418,18 @@ def _darvas_range_breakout_bundle(stock_view: DailySeriesView) -> tuple[PriceZon
     box_height = max(box_high - box_low, 0.01)
     return (
         PriceZone(
-            label="Range Breakout Zone",
-            description="Use the top of the recent daily box as the breakout planning zone.",
+            label="레인지 돌파 구역",
+            description="최근 일봉 박스 상단을 돌파 계획 구역으로 사용하세요.",
             lower_price=round(box_high, 2),
             upper_price=round(box_high * 1.02, 2),
         ),
         StrategyRule(
-            label="Box Failure",
-            rule_text=f"Invalidate the setup if price closes back below the range top near {box_high * 0.995:.2f}.",
+            label="박스 이탈",
+            rule_text=f"가격이 레인지 상단인 {box_high * 0.995:.2f} 근처 아래로 되돌아와 마감되면 셋업을 무효화합니다.",
         ),
         PriceZone(
-            label="Measured-Move Review Zone",
-            description="Review the plan near a simple range-height extension above the box.",
+            label="측정 이동 재검토 구역",
+            description="박스 위의 단순 레인지 높이 연장 근처에서 계획을 재검토하세요.",
             lower_price=round(box_high + box_height * 0.8, 2),
             upper_price=round(box_high + box_height * 1.2, 2),
         ),
@@ -441,18 +441,18 @@ def _ma_reclaim_bundle(stock_view: DailySeriesView) -> tuple[PriceZone, Strategy
     recent_high = stock_view.rolling_high(30) or stock_view.latest_high
     return (
         PriceZone(
-            label="MA Reclaim Zone",
-            description="Use the reclaimed 50-day average as the planning zone while price holds above it.",
+            label="이동평균 탈환 구역",
+            description="가격이 그 위에서 유지되는 동안 탈환된 50일 평균선을 계획 구역으로 사용하세요.",
             lower_price=round(sma50, 2),
             upper_price=round(sma50 * 1.02, 2),
         ),
         StrategyRule(
-            label="Reclaim Failure",
-            rule_text=f"Invalidate the setup if price closes back below the reclaimed average near {sma50 * 0.995:.2f}.",
+            label="탈환 실패",
+            rule_text=f"가격이 탈환된 평균선인 {sma50 * 0.995:.2f} 근처 아래로 되돌아와 마감되면 셋업을 무효화합니다.",
         ),
         PriceZone(
-            label="Reclaim Follow-Through Review Zone",
-            description="Review the plan as price approaches the recent daily resistance area after the reclaim.",
+            label="탈환 후속 상승 재검토 구역",
+            description="탈환 후 가격이 최근 일봉 저항 구역에 접근할 때 계획을 재검토하세요.",
             lower_price=round(recent_high * 0.98, 2),
             upper_price=round(recent_high * 1.01, 2),
         ),
@@ -485,9 +485,9 @@ def _finalize_evaluation(
             buy_zone=buy_zone,
             stop_invalidation_rule=stop_rule,
             target_review_zone=target_zone,
-            first_position_rule="Use a smaller first position and wait for the daily setup to continue confirming before expanding exposure.",
+            first_position_rule="첫 비중은 작게 유지하고, 추가 비중을 늘리기 전에 일봉 셋업이 계속 확인되길 기다리세요.",
             holding_profile=context.strategy.holding_profile,
-            why_this_plan=f"{context.strategy.name} daily conditions are met, so the plan includes zone-based levels derived from the current structure.",
+            why_this_plan=f"{context.strategy.name} 일봉 조건이 충족되어 현재 구조에서 파생된 구역 기반 레벨을 계획에 포함합니다.",
         )
 
     return _conditions_insufficient_evaluation(context, conditions, filters, guardrails)
@@ -510,20 +510,20 @@ def _blocked_evaluation(
         filters=filters,
         guardrails=guardrails,
         buy_zone=PriceZone(
-            label="Data-Blocked Buy Zone",
-            description="Fresh daily data is required before a numeric buy zone can be produced.",
+            label="데이터 차단 매수 구역",
+            description="수치 매수 구역을 생성하기 전 최신 일봉 데이터가 필요합니다.",
         ),
         stop_invalidation_rule=StrategyRule(
-            label="Data-Blocked Invalidation Rule",
-            rule_text="Fresh daily data is required before a numeric invalidation rule can be produced.",
+            label="데이터 차단 무효화 규칙",
+            rule_text="수치 무효화 규칙을 생성하기 전 최신 일봉 데이터가 필요합니다.",
         ),
         target_review_zone=PriceZone(
-            label="Data-Blocked Target Review Zone",
-            description="Fresh daily data is required before a numeric target review zone can be produced.",
+            label="데이터 차단 목표 재검토 구역",
+            description="수치 목표 재검토 구역을 생성하기 전 최신 일봉 데이터가 필요합니다.",
         ),
-        first_position_rule="Do not form a numeric first-position plan while daily evaluation is blocked by data freshness.",
+        first_position_rule="데이터 신선도로 인해 일봉 평가가 차단된 상태에서는 수치 첫 비중 계획을 세우지 마세요.",
         holding_profile=context.strategy.holding_profile,
-        why_this_plan=f"{context.strategy.name} daily evaluation is blocked by data freshness, so numeric zones are withheld.",
+        why_this_plan=f"{context.strategy.name} 일봉 평가가 데이터 신선도 문제로 차단되어 수치 구역을 제공하지 않습니다.",
     )
 
 
@@ -539,9 +539,9 @@ def _data_unavailable_evaluation(context: EvaluationContext) -> StrategyEvaluati
     conditions = [
         StrategyCheck(
             check_id="setup_data_availability",
-            label="Setup Data Availability",
+            label="셋업 데이터 가용성",
             status=StrategyCheckStatus.BLOCKED,
-            detail="Required daily bars are unavailable, so setup-specific checks are not evaluated.",
+            detail="필요한 일봉 데이터를 사용할 수 없어 셋업별 확인을 평가하지 않습니다.",
             value=context.data_status.value,
         )
     ]
@@ -557,20 +557,20 @@ def _data_unavailable_evaluation(context: EvaluationContext) -> StrategyEvaluati
         filters=filters,
         guardrails=guardrails,
         buy_zone=PriceZone(
-            label="Data-Unavailable Buy Zone",
-            description="Required daily data is unavailable, so a numeric buy zone cannot be produced.",
+            label="데이터 없음 매수 구역",
+            description="필요한 일봉 데이터를 사용할 수 없어 수치 매수 구역을 생성할 수 없습니다.",
         ),
         stop_invalidation_rule=StrategyRule(
-            label="Data-Unavailable Invalidation Rule",
-            rule_text="Required daily data is unavailable, so a numeric invalidation rule cannot be produced.",
+            label="데이터 없음 무효화 규칙",
+            rule_text="필요한 일봉 데이터를 사용할 수 없어 수치 무효화 규칙을 생성할 수 없습니다.",
         ),
         target_review_zone=PriceZone(
-            label="Data-Unavailable Target Review Zone",
-            description="Required daily data is unavailable, so a numeric target review zone cannot be produced.",
+            label="데이터 없음 목표 재검토 구역",
+            description="필요한 일봉 데이터를 사용할 수 없어 수치 목표 재검토 구역을 생성할 수 없습니다.",
         ),
-        first_position_rule="Do not form a numeric first-position plan while required daily data is unavailable.",
+        first_position_rule="필요한 일봉 데이터를 사용할 수 없는 상태에서는 수치 첫 비중 계획을 세우지 마세요.",
         holding_profile=context.strategy.holding_profile,
-        why_this_plan=f"{context.strategy.name} daily evaluation is blocked because required daily data is unavailable.",
+        why_this_plan=f"{context.strategy.name} 필요한 일봉 데이터를 사용할 수 없어 일봉 평가가 차단됩니다.",
     )
 
 
@@ -591,20 +591,20 @@ def _conditions_insufficient_evaluation(
         filters=filters,
         guardrails=guardrails,
         buy_zone=PriceZone(
-            label="Conditions-Insufficient Buy Zone",
-            description="Current daily conditions are incomplete, so the buy zone remains descriptive only.",
+            label="조건 부족 매수 구역",
+            description="현재 일봉 조건이 불완전하여 매수 구역은 설명적 표현에 그칩니다.",
         ),
         stop_invalidation_rule=StrategyRule(
-            label="Conditions-Insufficient Invalidation Rule",
-            rule_text="Current daily conditions are incomplete, so the invalidation rule remains descriptive only.",
+            label="조건 부족 무효화 규칙",
+            rule_text="현재 일봉 조건이 불완전하여 무효화 규칙은 설명적 표현에 그칩니다.",
         ),
         target_review_zone=PriceZone(
-            label="Conditions-Insufficient Target Review Zone",
-            description="Current daily conditions are incomplete, so the target review zone remains descriptive only.",
+            label="조건 부족 목표 재검토 구역",
+            description="현재 일봉 조건이 불완전하여 목표 재검토 구역은 설명적 표현에 그칩니다.",
         ),
-        first_position_rule="Keep the first-position plan descriptive only until the daily setup and shared checks align.",
+        first_position_rule="일봉 셋업과 공유 확인이 모두 정렬될 때까지 첫 비중 계획은 설명적 표현에 그칩니다.",
         holding_profile=context.strategy.holding_profile,
-        why_this_plan=f"{context.strategy.name} daily conditions are incomplete, so numeric zones are not produced yet.",
+        why_this_plan=f"{context.strategy.name} 일봉 조건이 불완전하여 아직 수치 구역을 생성하지 않습니다.",
     )
 
 

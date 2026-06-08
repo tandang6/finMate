@@ -3,17 +3,17 @@
   "strategies": [
     {
       "strategy_id": "ma_support_retest",
-      "name": "MA Support Retest",
+      "name": "이동평균 지지 재테스트",
       "activation_state": "live",
-      "activation_reason": "Approved V1 live strategy for daily Korean-stock evaluation.",
+      "activation_reason": "V1 라이브 전략으로 승인됨 - 한국 종목 일봉 평가용.",
       "kind": "trigger",
       "supported_timeframes": [
         "1d"
       ],
-      "summary": "Rising moving-average support retest after a constructive uptrend.",
-      "when_to_use": "Use after price pulls back into a rising moving-average support area without breaking the larger daily structure.",
-      "when_not_to_use": "Avoid when price is below the support average, trend structure is flat-to-down, or the latest daily bars are stale or partial.",
-      "holding_profile": "Swing trade measured in days to a few weeks while the daily trend remains intact.",
+      "summary": "상승 추세 이후 이동평균 지지선을 재테스트하는 패턴.",
+      "when_to_use": "일봉 구조를 손상시키지 않고 상승하는 이동평균 지지 구역으로 되돌아올 때 활용합니다.",
+      "when_not_to_use": "지지 평균선 아래에 있거나, 추세 구조가 횡보~하락이거나, 최근 일봉이 지연·부분 데이터인 경우 피하세요.",
+      "holding_profile": "일봉 추세가 유지되는 동안 며칠~몇 주 단위의 스윙 매매.",
       "required_data": [
         "daily_bars",
         "daily_volume",
@@ -25,21 +25,21 @@
         "support",
         "daily"
       ],
-      "disclaimer": "Educational strategy card only. Zone and rule outputs guide planning but do not guarantee future performance."
+      "disclaimer": "교육용 전략 카드입니다. 구역과 규칙은 계획 수립 참고용이며 미래 수익을 보장하지 않습니다."
     },
     {
       "strategy_id": "resistance_breakout_retest",
-      "name": "Resistance Breakout Retest",
+      "name": "저항선 돌파 후 재테스트",
       "activation_state": "live",
-      "activation_reason": "Approved V1 live strategy for daily Korean-stock evaluation.",
+      "activation_reason": "V1 라이브 전략으로 승인됨 - 한국 종목 일봉 평가용.",
       "kind": "trigger",
       "supported_timeframes": [
         "1d"
       ],
-      "summary": "Breakout above a prior daily resistance area followed by a controlled retest.",
-      "when_to_use": "Use when price clears a visible daily resistance zone and then holds it on a later pullback with acceptable volume behavior.",
-      "when_not_to_use": "Avoid when the move is extended from the breakout area, volume confirmation is weak, or the benchmark backdrop is clearly deteriorating.",
-      "holding_profile": "Momentum-oriented swing plan that expects follow-through within the next several daily bars.",
+      "summary": "일봉 저항 구역 돌파 후 제어된 되돌림.",
+      "when_to_use": "가격이 일봉 저항 구역을 뚫고 나간 후 이후 되돌림에서도 해당 구역을 지지선으로 유지할 때 활용합니다.",
+      "when_not_to_use": "돌파 구역에서 지나치게 멀어졌거나, 거래량 확인이 약하거나, 벤치마크 환경이 명확히 악화된 경우 피하세요.",
+      "holding_profile": "이후 며칠 일봉에서 추가 상승을 기대하는 모멘텀 지향 스윙 계획.",
       "required_data": [
         "daily_bars",
         "daily_volume",
@@ -51,21 +51,21 @@
         "retest",
         "daily"
       ],
-      "disclaimer": "Educational strategy card only. Zone and rule outputs guide planning but do not guarantee future performance."
+      "disclaimer": "교육용 전략 카드입니다. 구역과 규칙은 계획 수립 참고용이며 미래 수익을 보장하지 않습니다."
     },
     {
       "strategy_id": "pullback",
-      "name": "Pullback",
+      "name": "눌림목",
       "activation_state": "live",
-      "activation_reason": "Approved V1 live strategy for daily Korean-stock evaluation.",
+      "activation_reason": "V1 라이브 전략으로 승인됨 - 한국 종목 일봉 평가용.",
       "kind": "trigger",
       "supported_timeframes": [
         "1d"
       ],
-      "summary": "Trend-following pullback into a constructive daily demand area.",
-      "when_to_use": "Use when a stock is already in a healthy daily uptrend and retraces into an area where prior buyers have defended price.",
-      "when_not_to_use": "Avoid when the pullback is actually a trend break, the market regime is hostile, or data freshness is not reliable.",
-      "holding_profile": "Swing trade that expects the broader daily uptrend to resume after the pullback stabilizes.",
+      "summary": "건강한 일봉 수요 구역으로의 추세 추종 눌림목.",
+      "when_to_use": "종목이 이미 견고한 일봉 상승 추세에 있고, 이전 매수세가 가격을 방어했던 구역으로 되돌아올 때 활용합니다.",
+      "when_not_to_use": "눌림목이 실제 추세 이탈이거나, 시장 환경이 비우호적이거나, 데이터 신선도를 신뢰할 수 없을 때 피하세요.",
+      "holding_profile": "눌림목이 안정된 후 일봉 상승 추세 재개를 기대하는 스윙 매매.",
       "required_data": [
         "daily_bars",
         "daily_volume",
@@ -77,21 +77,21 @@
         "pullback",
         "daily"
       ],
-      "disclaimer": "Educational strategy card only. Zone and rule outputs guide planning but do not guarantee future performance."
+      "disclaimer": "교육용 전략 카드입니다. 구역과 규칙은 계획 수립 참고용이며 미래 수익을 보장하지 않습니다."
     },
     {
       "strategy_id": "darvas_range_breakout",
-      "name": "Darvas/Range Breakout",
+      "name": "다르바스/레인지 돌파",
       "activation_state": "live",
-      "activation_reason": "Approved V1 live strategy for daily Korean-stock evaluation.",
+      "activation_reason": "V1 라이브 전략으로 승인됨 - 한국 종목 일봉 평가용.",
       "kind": "trigger",
       "supported_timeframes": [
         "1d"
       ],
-      "summary": "Daily box consolidation followed by a breakout above range resistance.",
-      "when_to_use": "Use when price has built a stable daily range and then breaks above the top of that structure with supportive volume context.",
-      "when_not_to_use": "Avoid when the range is noisy, the breakout happens on weak confirmation, or data coverage is partial.",
-      "holding_profile": "Breakout swing plan that seeks continued expansion after the range resolves higher.",
+      "summary": "일봉 박스 횡보 후 레인지 저항선 돌파.",
+      "when_to_use": "가격이 안정적인 일봉 레인지를 형성한 뒤 지지적인 거래량 맥락과 함께 해당 구조 상단을 돌파할 때 활용합니다.",
+      "when_not_to_use": "레인지가 지저분하거나, 돌파 확인이 약하거나, 데이터 커버리지가 부분적일 때 피하세요.",
+      "holding_profile": "레인지가 위로 해소된 후 추가 상승을 추구하는 돌파 스윙 계획.",
       "required_data": [
         "daily_bars",
         "daily_volume",
@@ -103,21 +103,21 @@
         "breakout",
         "daily"
       ],
-      "disclaimer": "Educational strategy card only. Zone and rule outputs guide planning but do not guarantee future performance."
+      "disclaimer": "교육용 전략 카드입니다. 구역과 규칙은 계획 수립 참고용이며 미래 수익을 보장하지 않습니다."
     },
     {
       "strategy_id": "ma_reclaim",
-      "name": "MA Reclaim",
+      "name": "이동평균 탈환",
       "activation_state": "live",
-      "activation_reason": "Approved V1 live strategy for daily Korean-stock evaluation.",
+      "activation_reason": "V1 라이브 전략으로 승인됨 - 한국 종목 일봉 평가용.",
       "kind": "trigger",
       "supported_timeframes": [
         "1d"
       ],
-      "summary": "Price regains a meaningful moving average after trading below it.",
-      "when_to_use": "Use when a stock reclaims a key daily moving average and then starts to hold above it instead of falling back under immediately.",
-      "when_not_to_use": "Avoid when reclaim strength is weak, the move is countertrend, or the benchmark regime remains clearly unsupportive.",
-      "holding_profile": "Recovery-oriented swing plan that waits for reclaimed daily structure to prove itself.",
+      "summary": "주요 이동평균 아래에서 거래된 후 다시 회복.",
+      "when_to_use": "종목이 핵심 일봉 이동평균을 회복하고, 바로 다시 아래로 무너지지 않고 그 위에서 유지되기 시작할 때 활용합니다.",
+      "when_not_to_use": "탈환 강도가 약하거나, 역추세 움직임이거나, 벤치마크 환경이 명확히 비우호적일 때 피하세요.",
+      "holding_profile": "탈환된 일봉 구조가 유효성을 입증할 때까지 기다리는 회복 지향 스윙 계획.",
       "required_data": [
         "daily_bars",
         "daily_volume",
@@ -129,21 +129,21 @@
         "reclaim",
         "daily"
       ],
-      "disclaimer": "Educational strategy card only. Zone and rule outputs guide planning but do not guarantee future performance."
+      "disclaimer": "교육용 전략 카드입니다. 구역과 규칙은 계획 수립 참고용이며 미래 수익을 보장하지 않습니다."
     },
     {
       "strategy_id": "value_quality",
-      "name": "Value/Quality",
+      "name": "가치/퀄리티",
       "activation_state": "education_only",
-      "activation_reason": "Fundamentals are not available in the Slice 1A foundation, so the card stays educational only.",
+      "activation_reason": "Slice 1A 기반에서 재무 데이터가 제공되지 않아 교육용으로만 유지됩니다.",
       "kind": "trigger",
       "supported_timeframes": [
         "1d"
       ],
-      "summary": "Fundamental quality and valuation discipline paired with patient daily entry planning.",
-      "when_to_use": "Use as an educational framework when you want to combine balance-sheet quality, earnings durability, and disciplined entry zones.",
-      "when_not_to_use": "Do not treat this as live logic until fundamentals are actually available and validated in the product.",
-      "holding_profile": "Longer holding horizon than the technical trigger cards once fundamentals can support the thesis.",
+      "summary": "재무 퀄리티와 가치 평가 규율을 인내심 있는 일봉 진입 계획과 결합.",
+      "when_to_use": "재무상태표 품질, 이익 지속성, 규율 있는 진입 구역을 결합하려는 교육적 프레임워크로 활용합니다.",
+      "when_not_to_use": "재무 데이터가 실제로 제품에서 검증되기 전까지 라이브 로직으로 사용하지 마세요.",
+      "holding_profile": "재무가 논거를 뒷받침할 수 있게 되면 기술적 트리거 카드보다 더 긴 보유 기간.",
       "required_data": [
         "daily_bars",
         "fundamentals"
@@ -153,21 +153,21 @@
         "quality",
         "education"
       ],
-      "disclaimer": "Educational strategy card only. It is not currently evaluable in V1."
+      "disclaimer": "교육용 전략 카드입니다. 현재 V1에서는 평가할 수 없습니다."
     },
     {
       "strategy_id": "pead",
-      "name": "PEAD",
+      "name": "PEAD (실적 발표 후 드리프트)",
       "activation_state": "deferred",
-      "activation_reason": "PEAD is explicitly out of V1 live scope.",
+      "activation_reason": "PEAD는 V1 라이브 범위에서 명시적으로 제외됩니다.",
       "kind": "trigger",
       "supported_timeframes": [
         "1d"
       ],
-      "summary": "Post-earnings drift continuation after a meaningful earnings surprise.",
-      "when_to_use": "Use only after a future slice adds reliable earnings-event inputs and post-event rules.",
-      "when_not_to_use": "Do not use in Slice 1A because earnings surprise and event timing are not part of the foundation.",
-      "holding_profile": "Event-driven swing or position trade once the required earnings dataset exists.",
+      "summary": "의미 있는 실적 서프라이즈 이후 상승 모멘텀 지속.",
+      "when_to_use": "미래 슬라이스에서 신뢰할 수 있는 실적 이벤트 입력값과 이벤트 후 규칙이 추가된 이후에만 활용합니다.",
+      "when_not_to_use": "Slice 1A에서는 실적 서프라이즈와 이벤트 타이밍이 기반에 포함되지 않으므로 사용하지 마세요.",
+      "holding_profile": "필요한 실적 데이터셋이 갖춰지면 이벤트 드리븐 스윙 또는 포지션 매매.",
       "required_data": [
         "daily_bars",
         "daily_volume",
@@ -178,21 +178,21 @@
         "event_driven",
         "deferred"
       ],
-      "disclaimer": "Deferred strategy definition only. No live PEAD evaluation is implemented in V1."
+      "disclaimer": "보류 중인 전략 정의입니다. V1에서 라이브 PEAD 평가는 구현되지 않습니다."
     },
     {
       "strategy_id": "sector_rotation",
-      "name": "Sector Rotation",
+      "name": "섹터 로테이션",
       "activation_state": "deferred",
-      "activation_reason": "Sector ranking and breadth inputs are deferred beyond Slice 1A.",
+      "activation_reason": "섹터 랭킹 및 폭 입력값은 Slice 1A 이후로 연기됩니다.",
       "kind": "trigger",
       "supported_timeframes": [
         "1d"
       ],
-      "summary": "Rotate toward sectors showing improving leadership versus the market.",
-      "when_to_use": "Use only after sector-level comparative data and ranking rules are available.",
-      "when_not_to_use": "Do not use in Slice 1A because the foundation does not provide sector ranking data.",
-      "holding_profile": "Relative-strength style swing or position framework once sector leadership data exists.",
+      "summary": "시장 대비 리더십이 개선되는 섹터로 이동.",
+      "when_to_use": "섹터 수준의 비교 데이터와 랭킹 규칙이 갖춰진 이후에만 활용합니다.",
+      "when_not_to_use": "Slice 1A에서는 기반에 섹터 랭킹 데이터가 제공되지 않으므로 사용하지 마세요.",
+      "holding_profile": "섹터 리더십 데이터가 갖춰지면 상대강도 기반 스윙 또는 포지션 프레임워크.",
       "required_data": [
         "daily_bars",
         "benchmark_daily_bars",
@@ -204,21 +204,21 @@
         "rotation",
         "deferred"
       ],
-      "disclaimer": "Deferred strategy definition only. No sector rotation logic is implemented in V1."
+      "disclaimer": "보류 중인 전략 정의입니다. V1에서 섹터 로테이션 로직은 구현되지 않습니다."
     },
     {
       "strategy_id": "vcp",
-      "name": "VCP",
+      "name": "VCP (변동성 수축 패턴)",
       "activation_state": "deferred",
-      "activation_reason": "Pattern-specific contraction logic is deferred beyond Slice 1A.",
+      "activation_reason": "패턴 수축 로직은 Slice 1A 이후로 연기됩니다.",
       "kind": "trigger",
       "supported_timeframes": [
         "1d"
       ],
-      "summary": "Volatility contraction pattern that resolves into a constructive breakout.",
-      "when_to_use": "Use only after future slices add the pattern-detection rules and supporting validations.",
-      "when_not_to_use": "Do not use in Slice 1A because VCP-specific evaluator logic is intentionally deferred.",
-      "holding_profile": "Breakout swing framework that depends on repeated contraction and expansion behavior.",
+      "summary": "건설적인 돌파로 해소되는 변동성 수축 패턴.",
+      "when_to_use": "미래 슬라이스에서 패턴 감지 규칙과 지원 검증이 추가된 이후에만 활용합니다.",
+      "when_not_to_use": "Slice 1A에서는 VCP 전용 평가 로직이 의도적으로 보류됩니다.",
+      "holding_profile": "반복적인 수축과 팽창 동작에 의존하는 돌파 스윙 프레임워크.",
       "required_data": [
         "daily_bars",
         "daily_volume",
@@ -229,21 +229,21 @@
         "volatility",
         "deferred"
       ],
-      "disclaimer": "Deferred strategy definition only. No live VCP evaluation is implemented in V1."
+      "disclaimer": "보류 중인 전략 정의입니다. V1에서 라이브 VCP 평가는 구현되지 않습니다."
     },
     {
       "strategy_id": "gap_and_go",
-      "name": "Gap-and-Go",
+      "name": "갭 앤 고",
       "activation_state": "deferred",
-      "activation_reason": "Intraday-sensitive gap behavior is outside the daily-bar Slice 1A foundation.",
+      "activation_reason": "장중 민감한 갭 동작은 일봉 기반 Slice 1A 범위 밖입니다.",
       "kind": "trigger",
       "supported_timeframes": [
         "1d"
       ],
-      "summary": "Strong gap continuation setup that typically depends on more granular execution context.",
-      "when_to_use": "Use only after a future slice intentionally supports the needed gap rules and execution constraints.",
-      "when_not_to_use": "Do not use in Slice 1A because daily-bar-only data is insufficient for dependable gap-and-go logic.",
-      "holding_profile": "Tactical momentum setup that needs more than the current daily-only foundation.",
+      "summary": "더 세분화된 실행 맥락이 필요한 강한 갭 지속 셋업.",
+      "when_to_use": "미래 슬라이스에서 필요한 갭 규칙과 실행 제약이 의도적으로 지원된 이후에만 활용합니다.",
+      "when_not_to_use": "Slice 1A에서는 일봉 데이터만으로는 신뢰할 수 있는 갭 앤 고 로직에 충분하지 않습니다.",
+      "holding_profile": "현재 일봉 전용 기반 이상이 필요한 전술적 모멘텀 셋업.",
       "required_data": [
         "daily_bars",
         "daily_volume"
@@ -253,21 +253,21 @@
         "momentum",
         "deferred"
       ],
-      "disclaimer": "Deferred strategy definition only. No live Gap-and-Go evaluation is implemented in V1."
+      "disclaimer": "보류 중인 전략 정의입니다. V1에서 라이브 갭 앤 고 평가는 구현되지 않습니다."
     },
     {
       "strategy_id": "rsi_oversold_rebound",
-      "name": "RSI Oversold Rebound",
+      "name": "RSI 과매도 반등",
       "activation_state": "deferred",
-      "activation_reason": "Indicator-driven rebound logic is deferred beyond Slice 1A.",
+      "activation_reason": "지표 기반 반등 로직은 Slice 1A 이후로 연기됩니다.",
       "kind": "trigger",
       "supported_timeframes": [
         "1d"
       ],
-      "summary": "Mean-reversion rebound after an oversold momentum reading.",
-      "when_to_use": "Use only after future slices intentionally add RSI-based evaluation logic and guardrails.",
-      "when_not_to_use": "Do not use in Slice 1A because RSI-specific evaluator logic is intentionally deferred.",
-      "holding_profile": "Shorter-term rebound framework that requires disciplined exit handling once implemented.",
+      "summary": "과매도 모멘텀 수치 이후 평균 회귀 반등.",
+      "when_to_use": "미래 슬라이스에서 RSI 기반 평가 로직과 가드레일이 추가된 이후에만 활용합니다.",
+      "when_not_to_use": "Slice 1A에서는 RSI 전용 평가 로직이 의도적으로 보류됩니다.",
+      "holding_profile": "구현 후 규율 있는 청산 처리가 필요한 단기 반등 프레임워크.",
       "required_data": [
         "daily_bars",
         "volatility_indicators"
@@ -277,21 +277,21 @@
         "rsi",
         "deferred"
       ],
-      "disclaimer": "Deferred strategy definition only. No live RSI rebound evaluation is implemented in V1."
+      "disclaimer": "보류 중인 전략 정의입니다. V1에서 라이브 RSI 반등 평가는 구현되지 않습니다."
     },
     {
       "strategy_id": "bb_squeeze",
-      "name": "BB Squeeze",
+      "name": "볼린저 스퀴즈",
       "activation_state": "deferred",
-      "activation_reason": "Bollinger-width compression logic is deferred beyond Slice 1A.",
+      "activation_reason": "볼린저 폭 압축 로직은 Slice 1A 이후로 연기됩니다.",
       "kind": "trigger",
       "supported_timeframes": [
         "1d"
       ],
-      "summary": "Volatility compression followed by a directional expansion from a Bollinger squeeze.",
-      "when_to_use": "Use only after future slices add Bollinger-width calculations and expansion rules.",
-      "when_not_to_use": "Do not use in Slice 1A because squeeze-specific evaluator logic is intentionally deferred.",
-      "holding_profile": "Expansion-style swing framework that depends on indicator-based compression and release.",
+      "summary": "볼린저 스퀴즈에서 방향성 팽창이 뒤따르는 변동성 압축.",
+      "when_to_use": "미래 슬라이스에서 볼린저 폭 계산과 팽창 규칙이 추가된 이후에만 활용합니다.",
+      "when_not_to_use": "Slice 1A에서는 스퀴즈 전용 평가 로직이 의도적으로 보류됩니다.",
+      "holding_profile": "지표 기반 압축과 해소에 의존하는 팽창형 스윙 프레임워크.",
       "required_data": [
         "daily_bars",
         "volatility_indicators"
@@ -301,21 +301,21 @@
         "volatility",
         "deferred"
       ],
-      "disclaimer": "Deferred strategy definition only. No live BB Squeeze evaluation is implemented in V1."
+      "disclaimer": "보류 중인 전략 정의입니다. V1에서 라이브 볼린저 스퀴즈 평가는 구현되지 않습니다."
     },
     {
       "strategy_id": "relative_strength_leader",
-      "name": "Relative Strength Leader",
+      "name": "상대 강도 리더",
       "activation_state": "blocked_by_data",
-      "activation_reason": "Cross-sectional relative-strength inputs are not available in the Slice 1A foundation.",
+      "activation_reason": "교차 섹션 상대 강도 입력값은 Slice 1A 기반에서 제공되지 않습니다.",
       "kind": "trigger",
       "supported_timeframes": [
         "1d"
       ],
-      "summary": "Focus on stocks outperforming the market and peers over a persistent daily window.",
-      "when_to_use": "Use only after future slices add reliable cross-sectional ranking and benchmark-relative calculations.",
-      "when_not_to_use": "Do not use in Slice 1A because the required relative-strength dataset is not available yet.",
-      "holding_profile": "Leadership-following swing framework that depends on repeatable cross-sectional measurements.",
+      "summary": "지속적인 일봉 기간 동안 시장과 동종 기업 대비 아웃퍼폼하는 종목에 집중.",
+      "when_to_use": "미래 슬라이스에서 신뢰할 수 있는 교차 섹션 랭킹과 벤치마크 상대 계산이 추가된 이후에만 활용합니다.",
+      "when_not_to_use": "Slice 1A에서는 필요한 상대 강도 데이터셋이 아직 제공되지 않으므로 사용하지 마세요.",
+      "holding_profile": "반복 가능한 교차 섹션 측정에 의존하는 리더십 추종 스윙 프레임워크.",
       "required_data": [
         "daily_bars",
         "daily_volume",
@@ -326,7 +326,7 @@
         "relative_strength",
         "blocked_by_data"
       ],
-      "disclaimer": "Blocked-by-data strategy definition only. No live evaluation is available until the required data exists."
+      "disclaimer": "데이터 차단 전략 정의입니다. 필요한 데이터가 갖춰지기 전까지 라이브 평가는 불가합니다."
     }
   ]
 }
