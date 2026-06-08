@@ -26,6 +26,7 @@ from news_weather import get_news_weather       # 네이버 뉴스 크롤링 + A
 from domino_insight import get_domino_insight   # 거시경제 데이터 기반 AI 인사이트 생성
 
 from calendar_insight import generate_calendar_insight   # ✅ 캘린더 인사이트(해설) 모듈
+from dart import get_dart_calendar, get_dart_raw_sample  # DART 실적·IR 일정 실시간 조회
 from plan_db import init_db
 from plan_routes import router as planner_router
 from strategy_routes import router as strategy_router
@@ -291,19 +292,37 @@ def macro_insight():
 
 
 # ------------------------------------------------------------------------------
-# [3-f] 실적 발표 일정 JSON 서빙 API (/api/calendar/earnings-demo)
-# - data/earnings_events.json 파일을 그대로 반환
+# [3-f] 실적·IR 일정 API (/api/calendar/earnings-demo)
+# - DART API를 실시간으로 호출해 기업설명회·실적발표 공시 목록을 반환합니다.
+# - DART_API_KEY 미설정 시에만 정적 파일(earnings_events.json)로 폴백합니다.
 # ------------------------------------------------------------------------------
 @app.get("/api/calendar/earnings-demo")
 def get_earnings_demo():
+    # 1. DART API 실시간 조회 시도 (최근 30일 ~ 향후 30일)
+    result = get_dart_calendar(days_back=30, days_ahead=30)
+
+    # DART 키가 있고 정상 응답이면 (events가 빈 배열이어도) 그대로 반환
+    if result.get("source") == "dart":
+        return result["events"]
+
+    # 2. DART 키 미설정인 경우에만 → 정적 파일 폴백
     try:
         path = Path(__file__).parent / "data" / "earnings_events.json"
         with path.open(encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="earnings_events.json not found (FinMate-Back/data/earnings_events.json)")
+        raise HTTPException(status_code=404, detail="earnings_events.json not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ------------------------------------------------------------------------------
+# [3-f-2] DART 디버그 API (/api/calendar/dart-debug)
+# - DART 원본 응답을 직접 확인하기 위한 개발용 엔드포인트
+# ------------------------------------------------------------------------------
+@app.get("/api/calendar/dart-debug")
+def dart_debug(days_back: int = 7, pblntf_ty: str = "E"):
+    return get_dart_raw_sample(days_back=days_back, pblntf_ty=pblntf_ty)
 
 
 # ------------------------------------------------------------------------------

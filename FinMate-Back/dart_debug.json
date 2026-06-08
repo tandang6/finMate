@@ -1,0 +1,222 @@
+[
+  {
+    "corp_code": "00909835",
+    "corp_name": "차이커뮤니케이션",
+    "stock_code": "351870",
+    "corp_cls": "K",
+    "report_nm": "[기재정정]주식매수선택권부여에관한신고",
+    "rcept_no": "20260511000126",
+    "flr_nm": "차이커뮤니케이션",
+    "rcept_dt": "20260511",
+    "rm": ""
+  },
+  {
+    "corp_code": "00349097",
+    "corp_name": "케이티스카이라이프",
+    "stock_code": "053210",
+    "corp_cls": "Y",
+    "report_nm": "주주총회소집공고",
+    "rcept_no": "20260511000194",
+    "flr_nm": "케이티스카이라이프",
+    "rcept_dt": "20260511",
+    "rm": ""
+  },
+  {
+    "corp_code": "00414850",
+    "corp_name": "효성 ITX",
+    "stock_code": "094280",
+    "corp_cls": "Y",
+    "report_nm": "사외이사의선임ㆍ해임또는중도퇴임에관한신고",
+    "rcept_no": "20260511000240",
+    "flr_nm": "효성 ITX",
+    "rcept_dt": "20260511",
+    "rm": ""
+  },
+  {
+    "corp_code": "00455875",
+    "corp_name": "와토스코리아",
+    "stock_code": "079000",
+    "corp_cls": "K",
+    "report_nm": "자기주식취득결과보고서",
+    "rcept_no": "20260511000268",
+    "flr_nm": "와토스코리아",
+    "rcept_dt": "20260511",
+    "rm": ""
+  },
+  {
+    "corp_code": "00455875",
+    "corp_name": "와토스코리아",
+    "stock_code": "079000",
+    "corp_cls": "K",
+    "report_nm": "신탁계약해지결과보고서",
+    "rcept_no": "20260511000279",
+    "flr_nm": "와토스코리아",
+    "rcept_dt": "20260511",
+    "rm": ""
+  },
+  {
+    "corp_code": "00261285",
+    "corp_name": "한국가스공사",
+    "stock_code": "036460",
+    "corp_cls": "Y",
+    "report_nm": "주주총회소집공고",
+    "rcept_no": "20260511000296",
+    "flr_nm": "한국가스공사",
+    "rcept_dt": "20260511",
+    "rm": ""
+  },
+  {
+    "corp_code": "01205842",
+    "corp_name": "HD건설기계",
+    "stock_code": "267270",
+    "corp_cls": "Y",
+    "report_nm": "신탁계약에의한취득상황보고서",
+    "rcept_no": "20260511000337",
+    "flr_nm": "HD건설기계",
+    "rcept_dt": "20260511",
+    "rm": ""
+  },
+  {
+    "corp_code": "00104786",
+    "corp_name": "미래아이앤지",
+    "stock_code": "007120",
+    "corp_cls": "Y",
+    "report_nm": "주주총회소집공고",
+    "rcept_no": "20260511000460",
+    "flr_nm": "미래아이앤지",
+    "rcept_dt": "20260511",
+    "rm": ""
+  },
+  {
+    "corp_code": "01288827",
+    "corp_name": "HPSP",
+    "stock_code": "403870",
+    "corp_cls": "K",
+    "report_nm": "자기주식처분결과보고서",
+    "rcept_no": "20260511000480",
+    "flr_nm": "HPSP",
+    "rcept_dt": "20260511",
+    "rm": ""
+  },
+  {
+    "corp_code": "01049422",
+    "corp_name": "썸에이지",
+    "stock_code": "208640",
+    "corp_cls": "K",
+    "report_nm": "주주총회소집공고",
+    "rcept_no": "20260511000481",
+    "flr_nm": "썸에이지",
+    "rcept_dt": "20260511",
+    "rm": ""
+  },
+  {
+    "corp_code": "00479787",
+    "corp_name": "인텍플러스",
+    "stock_code": "064290",
+    "corp_cls": "K",
+    "report_nm": "주식매수선택권부여에관한신고",
+    "rcept_no": "20260511000535",
+    "flr_nm": "인텍플러스",
+    "rcept_dt": "20260511",
+    "rm": ""
+  },
+  {
+    "corp_code": "01622331",
+    "corp_name": "벨로크",
+    "stock_code": "424760",
+    "corp_cls": "K",
+    "report_nm": "[기재정정]주식매수선택권부여에관한신고",
+    "rcept_no": "20260511000540",
+    "flr_nm": "벨로크",
+    "rcept_dt": "20260511",
+    "rm": ""
+  },
+  {
+    "corp_code": "00299002",
+    "corp_name": "HL홀딩스",
+    "stock_code": "060980",
+    "corp_cls": "Y",
+    "report_nm": "신탁계약에의한취득상황보고서",
+    "rcept_no": "20260511000554",
+    "flr_nm": "HL홀딩스",
+    "rcept_dt": "20260511",
+    "rm": ""
+  },
+  {
+    "corp_code": "00111193",
+    "corp_name": "대양전기공업",
+    "stock_code": "108380",
+    "corp_cls": "K",
+    "report_nm": "자기주식처분결과보고서",
+    "rcept_no": "20260511000555",
+    "flr_nm": "대양전기공업",
+    "rcept_dt": "20260511",
+    "rm": ""
+  },
+  {
+    "corp_code": "00563837",
+    "corp_name": "제로투세븐",
+    "stock_code": "159580",
+    "corp_cls": "K",
+    "report_nm": "신탁계약에의한취득상황보고서",
+    "rcept_no": "20260511000564",
+    "flr_nm": "제로투세븐",
+    "rcept_dt": "20260511",
+    "rm": ""
+  },
+  {
+    "corp_code": "00983271",
+    "corp_name": "NHN",
+    "stock_code": "181710",
+    "corp_cls": "Y",
+    "report_nm": "[기재정정]주식매수선택권부여에관한신고",
+    "rcept_no": "20260511000592",
+    "flr_nm": "NHN",
+    "rcept_dt": "20260511",
+    "rm": ""
+  },
+  {
+    "corp_code": "00201432",
+    "corp_name": "비츠로시스",
+    "stock_code": "054220",
+    "corp_cls": "K",
+    "report_nm": "주주총회소집공고",
+    "rcept_no": "20260511000597",
+    "flr_nm": "비츠로시스",
+    "rcept_dt": "20260511",
+    "rm": ""
+  },
+  {
+    "corp_code": "01156795",
+    "corp_name": "프로젠",
+    "stock_code": "296160",
+    "corp_cls": "N",
+    "report_nm": "[기재정정]주식매수선택권부여에관한신고",
+    "rcept_no": "20260511000602",
+    "flr_nm": "프로젠",
+    "rcept_dt": "20260511",
+    "rm": ""
+  },
+  {
+    "corp_code": "00108746",
+    "corp_name": "DKME",
+    "stock_code": "015590",
+    "corp_cls": "Y",
+    "report_nm": "사외이사의선임ㆍ해임또는중도퇴임에관한신고",
+    "rcept_no": "20260511000605",
+    "flr_nm": "DKME",
+    "rcept_dt": "20260511",
+    "rm": ""
+  },
+  {
+    "corp_code": "01156795",
+    "corp_name": "프로젠",
+    "stock_code": "296160",
+    "corp_cls": "N",
+    "report_nm": "[기재정정]주식매수선택권부여에관한신고",
+    "rcept_no": "20260511000608",
+    "flr_nm": "프로젠",
+    "rcept_dt": "20260511",
+    "rm": ""
+  }
+]
