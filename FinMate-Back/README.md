@@ -6,9 +6,12 @@
   - **주요 제공 API 목록:**
     1.  `POST /api/chat`           : AI 금융 멘토 챗봇 (ECOS 용어 사전 + Gemini)
     2.  `GET  /api/market-weather` : 시장 날씨 지표 (KOSPI/환율 등 실시간 데이터)
-    3.  `GET  /api/news-weather`   : **(NEW)** 뉴스 기반 AI 시장 날씨 요약 및 뉴스 카드
+    3.  `GET  /api/news-weather`   : 뉴스 기반 AI 시장 날씨 요약 및 뉴스 카드
     4.  `GET  /api/macro-chart`    : 금리 + KOSPI 도미노 차트 데이터
-    5.  `GET  /api/macro-insight`  : **(NEW)** 차트 데이터 기반 AI 한 줄 분석
+    5.  `GET  /api/macro-insight`  : 차트 데이터 기반 AI 한 줄 분석
+    6.  `GET  /api/calendar/earnings-demo` : DART 기반 기업설명회(IR)·잠정실적 캘린더 이벤트
+    7.  `POST /api/calendar/insight`       : 캘린더 이벤트 클릭 시 AI 해설 생성
+    8.  `GET  /api/calendar/dart-debug`    : DART 원본 응답 확인용 디버그 API
 
 ## 2\. 사전 준비 사항
 
@@ -16,12 +19,13 @@
   - **API Key 준비:**
       - ECOS API Key (한국은행 경제통계시스템)
       - Gemini API Key (Google AI Studio)
-      - **(NEW)** Naver Developers API Key (검색 API - Client ID/Secret)
+      - Naver Developers API Key (검색 API - Client ID/Secret)
+      - DART API Key (금융감독원 전자공시시스템 OpenDART)
   - **운영체제:** Windows 기준 설명 (Mac/Linux 명령어는 별도 표기)
 
 # 🔑 [FinMate] API 키 발급 가이드
 
-프로젝트 실행을 위해서는 **Google(AI), Naver(뉴스), 한국은행(경제지표)** 총 3곳의 API 키가 필요합니다.
+프로젝트 실행을 위해서는 **Google(AI), Naver(뉴스), 한국은행(경제지표), 금융감독원 DART(기업 공시/캘린더)** 총 4곳의 API 키가 필요합니다.
 발급받은 키는 `.env` 파일에 복사해서 넣어야 합니다.
 
 -----
@@ -83,6 +87,23 @@ AI 챗봇, 뉴스 요약, 도미노 분석 기능에 사용됩니다.
 
 -----
 
+## 4\. 금융감독원 DART API (기업 공시/캘린더용)
+
+경제 이벤트 캘린더에서 기업설명회(IR) 개최 공시와 영업(잠정)실적 관련 공시를 실시간으로 가져올 때 사용됩니다.
+
+  * **발급 사이트:** [OpenDART 인증키 신청](https://opendart.fss.or.kr/uss/umt/EgovMberInsertView.do)
+  * **발급 순서:**
+    1.  위 링크 접속 후 OpenDART 계정으로 로그인하거나 회원가입합니다.
+    2.  **인증키 신청** 메뉴에서 오픈API 이용약관에 동의합니다.
+    3.  신청 정보를 입력하고 인증키를 발급받습니다.
+    4.  발급된 인증키를 복사합니다.
+  * **`.env` 설정:**
+    ```properties
+    DART_API_KEY=복사한_OpenDART_인증키
+    ```
+
+-----
+
 ## 📂 최종 `.env` 파일 예시
 
 위에서 받은 키들을 모아 `main.py`가 있는 폴더에 `.env` 파일을 만들고 아래처럼 채워주세요.
@@ -104,6 +125,11 @@ NAVER_CLIENT_SECRET=AbCd......
 # 3. 한국은행 ECOS API
 # ==========================================
 ECOS_AUTH_KEY=123456......
+
+# ==========================================
+# 4. 금융감독원 DART API (Calendar)
+# ==========================================
+DART_API_KEY=abcd1234......
 ```
 
 > **⚠️ 주의:** 이 `.env` 파일은 타인에게 노출되면 안 되므로 GitHub 등에 업로드하지 마세요\! (`.gitignore`에 추가 필수)
@@ -119,6 +145,8 @@ FinMate/
       ├── bot.py             # AI 챗봇 로직
       ├── news_weather.py    # (NEW) 네이버 뉴스 + AI 요약
       ├── domino_insight.py  # (NEW) 거시경제 AI 분석
+      ├── calendar_insight.py # (NEW) 캘린더 이벤트 AI 해설
+      ├── dart.py            # (NEW) OpenDART 공시 기반 캘린더 이벤트 조회
       ├── config.py          # 환경변수 관리 설정
       ├── .env               # (필수) API Key 저장 파일
       └── requirements.txt   # 라이브러리 목록
@@ -158,6 +186,8 @@ NAVER_CLIENT_ID=네이버_클라이언트_아이디
 NAVER_CLIENT_SECRET=네이버_시크릿
 
 ECOS_AUTH_KEY=한국은행_인증키
+
+DART_API_KEY=금융감독원_OpenDART_인증키
 ```
 
 ### (4) 서버 실행
@@ -268,6 +298,60 @@ uvicorn main:app --reload --port 8000
 }
 ```
 
+-----
+
+### (6) 🗓️ DART 경제 이벤트 캘린더 (`GET /api/calendar/earnings-demo`)
+
+  - **설명:** DART API에서 최근 30일~향후 30일 범위의 기업설명회(IR) 및 영업(잠정)실적 관련 공시를 가져와 프론트엔드 캘린더 이벤트 형식으로 반환합니다. `DART_API_KEY`가 없으면 기존 `data/earnings_events.json` 정적 파일로 폴백합니다.
+  - **Response:**
+
+<!-- end list -->
+
+```json
+[
+  {
+    "id": "dart-20260511900142",
+    "title": "한미반도체 기업설명회(IR)개최(안내공시)",
+    "datetime": "2026-05-11T09:00:00",
+    "country": "KR",
+    "type": "EARNINGS",
+    "importance": "very_high",
+    "description": "한미반도체 기업설명회(IR)개최(안내공시)",
+    "asset": "all",
+    "stockCode": "042700",
+    "companyName": "한미반도체",
+    "location": "-"
+  }
+]
+```
+
+-----
+
+### (7) 💬 캘린더 이벤트 AI 해설 (`POST /api/calendar/insight`)
+
+  - **설명:** 프론트엔드에서 캘린더 이벤트를 클릭했을 때 이벤트 정보를 보내면, Gemini가 투자자가 확인할 포인트를 짧게 해설합니다.
+  - **Request:**
+
+<!-- end list -->
+
+```json
+{
+  "title": "한미반도체 기업설명회(IR)개최(안내공시)",
+  "datetime": "2026-05-11T09:00:00",
+  "type": "EARNINGS",
+  "companyName": "한미반도체",
+  "stockCode": "042700"
+}
+```
+
+  - **Response:**
+
+<!-- end list -->
+
+```json
+{ "insight": "IR 일정에서는 실적 전망, 수주 흐름, 향후 가이던스 변화 여부를 확인하는 것이 좋습니다." }
+```
+
 ## 6\. 프론트엔드 연동 시 주의사항
 
 1.  **CORS 설정:**
@@ -298,6 +382,10 @@ uvicorn main:app --reload --port 8000
   - **Q. ECOS 데이터가 비어있어요.**
 
       - A. 한국은행 API는 하루 호출 제한(약 2만 회)이 있거나, 인증키가 만료되었을 수 있습니다. 로그를 확인해 주세요.
+
+  - **Q. `/api/calendar/dart-debug` 결과가 비어있어요.**
+
+      - A. 조회 기간에 해당 공시가 없거나, `pblntf_ty` 값이 맞지 않을 수 있습니다. 기업설명회(IR)는 `pblntf_ty=I`, 주요사항보고 계열은 `pblntf_ty=B`로 확인해 보세요.
 
 -----
 
