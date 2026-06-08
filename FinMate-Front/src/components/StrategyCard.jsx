@@ -15,6 +15,7 @@ import {
   CHECK_STATUS_LABELS,
   DATA_STATUS_LABELS,
   formatPriceZone,
+  getStrategyDisplayName,
 } from "../lib/strategy-flow";
 
 
@@ -88,6 +89,8 @@ export default function StrategyCard({ definition, evaluation, onCreatePlan }) {
   const activationClass = ACTIVATION_CLASS_MAP[activationState] ?? ACTIVATION_CLASS_MAP.deferred;
   const dataStatusLabel = evaluation ? DATA_STATUS_LABELS[evaluation.data_status] ?? evaluation.data_status : null;
   const statusReason = evaluation ? evaluation.why_this_plan : definition.activation_reason;
+  const displayName = getStrategyDisplayName(definition);
+  const canonicalName = definition.name;
 
   return (
     <article className="bg-white rounded-[1.75rem] border border-gray-100 shadow-sm hover:shadow-md transition overflow-hidden">
@@ -105,7 +108,10 @@ export default function StrategyCard({ definition, evaluation, onCreatePlan }) {
               )}
             </div>
             <div>
-              <h3 className="text-xl font-bold text-gray-900">{definition.name}</h3>
+              <h3 className="text-xl font-bold text-gray-900">{displayName}</h3>
+              {displayName !== canonicalName && (
+                <p className="text-xs font-semibold text-gray-400 mt-1">{canonicalName}</p>
+              )}
               <p className="text-sm text-gray-500 mt-2 leading-relaxed">{definition.summary}</p>
             </div>
           </div>

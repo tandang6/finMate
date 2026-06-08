@@ -436,7 +436,14 @@ const AIMentorChat = () => {
 };
 
 // --- [PAGE] 대시보드 페이지 ---
-const DashboardPage = ({ marketWeatherData, macroData, macroInsight, newsWeather }) => {
+const DashboardPage = ({ marketWeatherData, macroData, macroInsight, newsWeather, calendarEvents }) => {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const upcomingEvents = (calendarEvents || [])
+    .filter((ev) => ev?.datetime && new Date(ev.datetime) >= todayStart)
+    .sort((a, b) => new Date(a.datetime) - new Date(b.datetime))
+    .slice(0, 3);
   return (
     <main className="max-w-7xl mx-auto px-4 lg:px-6 py-8 animate-in fade-in duration-500">
         {/* 상단 날씨 섹션 */}
@@ -595,21 +602,58 @@ const DashboardPage = ({ marketWeatherData, macroData, macroInsight, newsWeather
             
             {/* 5. 경제 캘린더 */}
             <section className="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-sm">
-              <h3 className="font-bold mb-5 flex gap-2 items-center text-gray-800"><Calendar className="w-5 h-5 text-indigo-600"/> 주요 경제 일정</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between group cursor-pointer">
-                  <div className="flex items-center gap-4">
-                    <div className="flex flex-col items-center bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 group-hover:bg-indigo-50 group-hover:border-indigo-100 transition">
-                      <span className="text-[10px] font-bold text-gray-400 group-hover:text-indigo-400">TODAY</span>
-                      <span className="text-lg font-bold text-gray-800 group-hover:text-indigo-700">12</span>
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm text-gray-800">미국 CPI 발표</p>
-                      <p className="text-xs text-gray-400">21:30 예정 • 예측 3.1%</p>
-                    </div>
-                  </div>
-                  <span className="bg-red-50 text-red-600 border border-red-100 text-[10px] font-bold px-2 py-1 rounded-lg">High</span>
-                </div>
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="font-bold flex gap-2 items-center text-gray-800">
+                  <Calendar className="w-5 h-5 text-indigo-600"/> 주요 경제 일정
+                </h3>
+                <Link to="/calendar" className="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-full transition">
+                  전체보기 <ChevronRight className="inline w-3 h-3" />
+                </Link>
+              </div>
+              <div className="space-y-3">
+                {upcomingEvents.length === 0 && (
+                  <p className="text-xs text-gray-400 text-center py-4">예정된 일정이 없습니다.</p>
+                )}
+                {upcomingEvents.map((ev) => {
+                  const d = new Date(ev.datetime);
+                  const todayMidnight = new Date();
+                  todayMidnight.setHours(0, 0, 0, 0);
+                  const tomorrowMidnight = new Date(todayMidnight);
+                  tomorrowMidnight.setDate(tomorrowMidnight.getDate() + 1);
+                  const isToday = d >= todayMidnight && d < tomorrowMidnight;
+                  const dayNum = d.getDate();
+                  const importanceStyle =
+                    ev.importance === "very_high"
+                      ? "bg-red-50 text-red-600 border-red-100"
+                      : "bg-orange-50 text-orange-600 border-orange-100";
+                  const importanceText =
+                    ev.importance === "very_high" ? "매우중요" : "중요";
+                  return (
+                    <Link
+                      key={ev.id}
+                      to="/calendar"
+                      className="flex items-center justify-between group cursor-pointer hover:bg-gray-50 rounded-2xl p-1 -mx-1 transition"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`flex flex-col items-center px-3 py-2 rounded-xl border transition ${isToday ? "bg-gray-900 border-gray-900 text-white" : "bg-gray-50 border-gray-100 group-hover:bg-indigo-50 group-hover:border-indigo-100"}`}>
+                          <span className={`text-[10px] font-bold ${isToday ? "text-gray-300" : "text-gray-400 group-hover:text-indigo-400"}`}>
+                            {isToday ? "TODAY" : `${d.getMonth() + 1}월`}
+                          </span>
+                          <span className={`text-lg font-bold ${isToday ? "text-white" : "text-gray-800 group-hover:text-indigo-700"}`}>
+                            {dayNum}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm text-gray-800 line-clamp-1">{ev.companyName}</p>
+                          <p className="text-xs text-gray-400 line-clamp-1">{ev.title}</p>
+                        </div>
+                      </div>
+                      <span className={`border text-[10px] font-bold px-2 py-1 rounded-lg ${importanceStyle}`}>
+                        {importanceText}
+                      </span>
+                    </Link>
+                  );
+                })}
               </div>
             </section>
           </div>
@@ -623,9 +667,17 @@ const FinMateApp = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
 
-  // 로그인 상태 관리
   const handleLogin = (userInfo) => { setIsLoggedIn(true); setUser(userInfo); };
   const handleLogout = () => { setIsLoggedIn(false); setUser(null); };
+
+  const [calendarEvents, setCalendarEvents] = useState([]);
+
+  useEffect(() => {
+    fetch("http://localhost:8000/api/calendar/earnings-demo")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => setCalendarEvents(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
 
    // ✅ 도미노 차트 데이터 상태
   const [macroData, setMacroData] = useState(MOCK_MACRO_CHART);
@@ -740,6 +792,7 @@ const [macroInsight, setMacroInsight] = useState("");
               macroData={macroData}
               macroInsight={macroInsight}
               newsWeather={newsWeather}
+              calendarEvents={calendarEvents}
             />
           }
         />
