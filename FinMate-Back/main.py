@@ -42,6 +42,7 @@ app = FastAPI()
 # 이 백엔드 API에 정상적으로 요청을 보낼 수 있도록 허용합니다.
 origins = [
     "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 
 app.add_middleware(

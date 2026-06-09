@@ -182,6 +182,72 @@ def build_context_from_top_news(top_news):
     return "\n".join(lines)
 
 
+def shorten_text(text: str, max_length: int) -> str:
+    """
+    화면 카드에 들어갈 fallback 문구를 짧게 정리합니다.
+    """
+    cleaned = " ".join((text or "").split())
+    if len(cleaned) <= max_length:
+        return cleaned
+    return cleaned[: max_length - 1].rstrip() + "…"
+
+
+def infer_news_category(article: dict) -> str:
+    """
+    AI 요약이 실패했을 때 제목/설명 기반으로 간단한 카드 카테고리를 고릅니다.
+    """
+    text = f"{article.get('title', '')} {article.get('description', '')}"
+    category_keywords = [
+        ("금리", "금리"),
+        ("환율", "환율"),
+        ("달러", "환율"),
+        ("코스피", "증시"),
+        ("코스닥", "증시"),
+        ("증시", "증시"),
+        ("반도체", "반도체"),
+        ("이차전지", "산업"),
+        ("AI", "산업"),
+        ("기업", "기업"),
+    ]
+
+    for keyword, category in category_keywords:
+        if keyword in text:
+            return category
+
+    return "뉴스"
+
+
+def build_news_weather_fallback(top_news):
+    """
+    Gemini quota/모델 오류가 나도 프론트가 뉴스 데이터를 표시할 수 있게 합니다.
+    """
+    cards = []
+    for article in top_news[:4]:
+        title = article.get("title", "")
+        description = article.get("description", "")
+        url = article.get("link") or article.get("originallink") or ""
+        summary_source = description or title
+
+        cards.append(
+            {
+                "category": infer_news_category(article),
+                "title": shorten_text(title, 28) or "시장 뉴스",
+                "summary": shorten_text(summary_source, 42) or "원문 기준 주요 뉴스입니다.",
+                "insight": "AI 분석 한도 문제로 원문 뉴스를 표시합니다.",
+                "url": url,
+            }
+        )
+
+    return {
+        "weather": {
+            "line1": "오늘 날씨는 : CLOUDY",
+            "line2": "뉴스는 불러왔고 AI 요약은 대기 중이에요",
+            "line3": "Gemini 한도 문제로 원문 뉴스 카드만 표시합니다.",
+        },
+        "cards": cards,
+    }
+
+
 # ==============================================================================
 # 2. Gemini AI를 활용한 시장 날씨 및 뉴스 카드 생성
 # ==============================================================================
@@ -316,8 +382,15 @@ def get_news_weather():
         top_n=10,
     )
 
-    # AI 분석 수행
-    result = generate_weather_and_cards_with_gemini(top_news)
+    # AI 분석 수행. Gemini quota/모델 오류가 나도 뉴스 원문 카드는 반환합니다.
+    if top_news:
+        try:
+            result = generate_weather_and_cards_with_gemini(top_news)
+        except Exception as exc:
+            print(f"⚠️ Gemini 뉴스 요약 실패, fallback 반환: {exc}")
+            result = build_news_weather_fallback(top_news)
+    else:
+        result = build_news_weather_fallback(top_news)
 
     # 3. 결과 캐싱 (Cache Update)
     _cached_result = result

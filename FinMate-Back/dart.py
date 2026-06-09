@@ -5,7 +5,7 @@
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 
 from config import settings
 
@@ -43,7 +43,7 @@ def _fetch_dart_list(
     pblntf_ty: Optional[str] = None,
     page_no: int = 1,
     page_count: int = 100,
-) -> Optional[List[Dict]]:
+) -> List[Dict]:
     """
     DART 공시 목록 API 호출.
 
@@ -55,7 +55,7 @@ def _fetch_dart_list(
         page_count: 페이지당 최대 건수 (최대 100)
 
     Returns:
-        공시 항목 리스트. 오류 시 None, 정상 조회 결과 없음 시 빈 리스트.
+        공시 항목 리스트. 오류/결과 없음 시 빈 리스트.
     """
     if not DART_API_KEY:
         return []
@@ -75,20 +75,17 @@ def _fetch_dart_list(
     try:
         res = requests.get(f"{DART_BASE_URL}/list.json", params=params, timeout=20)
         if res.status_code != 200:
-            return None
+            return []
 
         data = res.json()
         # "000" = 정상, "013" = 조회 결과 없음
-        status = data.get("status")
-        if status == "013":
+        if data.get("status") not in ("000", "013"):
             return []
-        if status != "000":
-            return None
 
         return data.get("list") or []
 
     except Exception:
-        return None
+        return []
 
 
 # ==============================================================================
@@ -114,9 +111,9 @@ def _to_calendar_event(item: Dict) -> Dict:
     """
     rcept_dt   = item.get("rcept_dt", "")
     rcept_no   = item.get("rcept_no", "")
-    corp_name  = (item.get("corp_name", "") or "").strip()
-    stock_code = (item.get("stock_code") or "").strip()
-    report_nm  = (item.get("report_nm", "") or "").strip()
+    corp_name  = item.get("corp_name", "")
+    stock_code = item.get("stock_code") or ""
+    report_nm  = item.get("report_nm", "")
 
     # "20260601" → "2026-06-01T09:00:00"
     try:
@@ -142,7 +139,7 @@ def _to_calendar_event(item: Dict) -> Dict:
 
 
 # ==============================================================================
-# 4. 캐시 (24시간 TTL 인메모리 캐시)
+# 4. 캐시 (1시간 TTL 인메모리 캐시)
 # ==============================================================================
 
 _cache: Dict[str, Any] = {}
@@ -172,8 +169,8 @@ def get_dart_calendar(days_back: int = 30, days_ahead: int = 30) -> Dict[str, An
     전략:
     - I타입(거래소공시):   "기업설명회" 키워드 → 기업설명회(IR)개최 포착
     - B타입(주요사항보고): "잠정실적/영업실적" 키워드 → 실적 발표 포착
-    - 병렬 페이지 요청으로 속도 개선 (최대 7페이지 × 2타입)
-    - 24시간 인메모리 캐시 적용
+    - 병렬 페이지 요청으로 속도 개선 (최대 15페이지 × 2타입)
+    - 1시간 인메모리 캐시 적용
     """
     if not DART_API_KEY:
         return {
@@ -208,14 +205,10 @@ def get_dart_calendar(days_back: int = 30, days_ahead: int = 30) -> Dict[str, An
 
     seen_ids: set = set()
     events:   List[Dict] = []
-    had_fetch_error = False
 
     for pblntf_ty, keywords in PBLNTF_TYPES:
         first_page = _fetch_dart_list(bgn_de, end_de, pblntf_ty=pblntf_ty,
                                       page_no=1, page_count=100)
-        if first_page is None:
-            had_fetch_error = True
-            continue
         if not first_page:
             continue
 
@@ -237,10 +230,7 @@ def get_dart_calendar(days_back: int = 30, days_ahead: int = 30) -> Dict[str, An
                 for p in range(2, MAX_PAGES + 1)
             }
             for future in as_completed(future_map):
-                page_items = future.result()
-                if page_items is None:
-                    had_fetch_error = True
-                    continue
+                page_items = future.result() or []
                 for ev in _extract_events(page_items, keywords):
                     if ev["id"] not in seen_ids:
                         seen_ids.add(ev["id"])
@@ -248,18 +238,9 @@ def get_dart_calendar(days_back: int = 30, days_ahead: int = 30) -> Dict[str, An
 
     events.sort(key=lambda e: e["datetime"])
 
-    if had_fetch_error and not events:
-        return {
-            "events":     [],
-            "source":     "dart_unavailable",
-            "fetched_at": datetime.now().isoformat(),
-            "total":      0,
-            "error":      "DART API 응답을 가져오지 못했습니다.",
-        }
-
     result = {
         "events":     events,
-        "source":     "dart_partial" if had_fetch_error else "dart",
+        "source":     "dart",
         "fetched_at": datetime.now().isoformat(),
         "total":      len(events),
     }

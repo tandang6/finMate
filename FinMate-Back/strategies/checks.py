@@ -24,17 +24,17 @@ def data_freshness_guardrail(
     if combined_status == MarketDataStatus.FRESH:
         return StrategyCheck(
             check_id="data_freshness",
-            label="Data Freshness",
+            label="데이터 신선도",
             status=StrategyCheckStatus.MET,
-            detail="Stock and benchmark daily bars are fresh.",
+            detail="종목 및 벤치마크 일봉 데이터가 최신 상태입니다.",
             value="fresh",
         )
 
     return StrategyCheck(
         check_id="data_freshness",
-        label="Data Freshness",
+        label="데이터 신선도",
         status=StrategyCheckStatus.BLOCKED,
-        detail="Fresh daily data is required before numeric zones can be produced.",
+        detail="수치 구역을 생성하기 전 최신 일봉 데이터가 필요합니다.",
         value=combined_status.value,
     )
 
@@ -45,25 +45,25 @@ def market_regime_guardrail(benchmark_view: DailySeriesView) -> StrategyCheck:
     if sma50 is None or sma200 is None:
         return StrategyCheck(
             check_id="market_regime",
-            label="Market Regime",
+            label="시장 환경",
             status=StrategyCheckStatus.BLOCKED,
-            detail="Benchmark history is insufficient for market-regime checks.",
+            detail="시장 환경 확인을 위한 벤치마크 히스토리가 부족합니다.",
         )
 
     if benchmark_view.latest_close > sma50 and sma50 > sma200:
         return StrategyCheck(
             check_id="market_regime",
-            label="Market Regime",
+            label="시장 환경",
             status=StrategyCheckStatus.MET,
-            detail="Benchmark trend remains constructive on the daily timeframe.",
+            detail="벤치마크 추세가 일봉 기준 건설적으로 유지됩니다.",
             value=f"close>{sma50:.2f}>{sma200:.2f}",
         )
 
     return StrategyCheck(
         check_id="market_regime",
-        label="Market Regime",
+        label="시장 환경",
         status=StrategyCheckStatus.NOT_MET,
-        detail="Benchmark trend is not constructive enough for the shared market-regime guardrail.",
+        detail="공유 시장 환경 가드레일에 맞는 충분한 벤치마크 추세가 아닙니다.",
         value=f"close={benchmark_view.latest_close:.2f}, sma50={sma50:.2f}, sma200={sma200:.2f}",
     )
 
@@ -74,25 +74,25 @@ def trend_regime_filter(stock_view: DailySeriesView) -> StrategyCheck:
     if sma50 is None or sma200 is None:
         return StrategyCheck(
             check_id="trend_regime",
-            label="Trend Regime",
+            label="추세 환경",
             status=StrategyCheckStatus.BLOCKED,
-            detail="Stock history is insufficient for the shared trend-regime filter.",
+            detail="공유 추세 환경 필터에 대한 종목 히스토리가 부족합니다.",
         )
 
     if stock_view.latest_close > sma50 and sma50 > sma200:
         return StrategyCheck(
             check_id="trend_regime",
-            label="Trend Regime",
+            label="추세 환경",
             status=StrategyCheckStatus.MET,
-            detail="Price remains above rising medium- and long-term daily averages.",
+            detail="가격이 상승하는 중·장기 일봉 평균선 위를 유지합니다.",
             value=f"close={stock_view.latest_close:.2f}, sma50={sma50:.2f}, sma200={sma200:.2f}",
         )
 
     return StrategyCheck(
         check_id="trend_regime",
-        label="Trend Regime",
+        label="추세 환경",
         status=StrategyCheckStatus.NOT_MET,
-        detail="The shared trend-regime filter is not satisfied on the daily timeframe.",
+        detail="공유 추세 환경 필터가 일봉 기준 충족되지 않습니다.",
         value=f"close={stock_view.latest_close:.2f}, sma50={sma50:.2f}, sma200={sma200:.2f}",
     )
 
@@ -102,25 +102,25 @@ def volume_confirmation_filter(stock_view: DailySeriesView, *, min_ratio: float 
     if ratio is None:
         return StrategyCheck(
             check_id="volume_confirmation",
-            label="Volume Confirmation",
+            label="거래량 확인",
             status=StrategyCheckStatus.BLOCKED,
-            detail="Volume history is insufficient for the shared breakout filter.",
+            detail="공유 돌파 필터에 대한 거래량 히스토리가 부족합니다.",
         )
 
     if ratio >= min_ratio:
         return StrategyCheck(
             check_id="volume_confirmation",
-            label="Volume Confirmation",
+            label="거래량 확인",
             status=StrategyCheckStatus.MET,
-            detail="Latest daily volume is stronger than the recent baseline.",
+            detail="최근 일봉 거래량이 최근 기준선보다 강합니다.",
             value=f"{ratio:.2f}x",
         )
 
     return StrategyCheck(
         check_id="volume_confirmation",
-        label="Volume Confirmation",
+        label="거래량 확인",
         status=StrategyCheckStatus.NOT_MET,
-        detail="Latest daily volume is not strong enough for the shared breakout filter.",
+        detail="최근 일봉 거래량이 공유 돌파 필터 기준에 충분하지 않습니다.",
         value=f"{ratio:.2f}x",
     )
 
