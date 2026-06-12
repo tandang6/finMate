@@ -3,6 +3,7 @@ from typing import Optional
 from google import genai
 from google.genai import types
 from config import settings
+from llm_guardrails import build_prompt_reminder, build_system_instruction, ensure_safe_llm_text
 
 
 # ==============================================================================
@@ -17,12 +18,15 @@ if not API_KEY:
 
 client = genai.Client(api_key=API_KEY)
 
-INSIGHT_SYSTEM_PERSONA = """
+INSIGHT_SYSTEM_PERSONA = build_system_instruction(
+    "calendar_insight",
+    """
 너는 한국 주식/거시경제 이벤트를 설명하는 금융 멘토다.
 반드시 '구조화된 섹션'으로만 답하고, 서론/잡담/인삿말/요약문/주의문을 절대 넣지 마라.
 실제 수치/실적/뉴스/전망 등 '검증 불가한 최신 사실'은 만들지 말고, 일반 원리와 체크포인트로 설명해라.
 각 항목은 짧은 bullet로 써라. (한 줄 25자~60자 정도)
-""".strip()
+""".strip(),
+)
 
 # 검색 도구를 아예 빼서(=tools 없음) 비용/할당량 절약 + 환각 방지
 INSIGHT_CONFIG = types.GenerateContentConfig(
@@ -52,6 +56,7 @@ def build_insight_prompt(
 - 각 섹션은 '헤더' 다음에 항목을 번호로 나눈다.
 - 각 번호 아래는 2~3개의 bullet로 쓴다.
 - '실제 수치/실적 결과/속보/루머' 같은 최신 사실을 절대 만들어내지 말고, 일반 원리 기반으로만 작성한다.
+{build_prompt_reminder("calendar_insight")}
 
 [출력 형식(그대로)]
 🔴 상승 요인 (롱 근거)
@@ -110,4 +115,4 @@ def generate_calendar_insight(
         config=INSIGHT_CONFIG,
     )
     
-    return (res.text or "").strip()
+    return ensure_safe_llm_text(res.text, "calendar_insight")

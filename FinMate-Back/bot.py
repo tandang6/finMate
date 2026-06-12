@@ -3,8 +3,8 @@
 from typing import Literal, List, Mapping
 from google import genai
 from google.genai import types
-import os
 from config import settings  # 환경변수 및 설정값 관리 모듈
+from llm_guardrails import build_prompt_reminder, build_system_instruction, ensure_safe_llm_text
 
 # ==============================================================================
 # 1. Google Gemini API 클라이언트 설정
@@ -26,11 +26,16 @@ client = genai.Client(api_key=API_KEY)
 # [시스템 페르소나 설정]
 # AI에게 부여할 역할(Role)과 성격(Tone)을 정의합니다.
 # 이 지침은 모든 대화의 기본 규칙으로 작동합니다.
-system_persona = (
-    "당신은 투자자들에게 현실적인 조언을 해주는 친절하고 전문적인 금융 컨설턴트. "
-    "답변은 항상 핵심적이고 명료하게 작성 "
-    "최신 정보가 필요한 질문(예: 주가, 뉴스)에는 반드시 검색 도구를 사용하여 답변."
-    "답변은 3줄 이내"
+system_persona = build_system_instruction(
+    "chat",
+    (
+        "당신은 투자자를 대신해 판단하지 않고, 사용자가 근거를 정리하도록 돕는 "
+        "친절한 금융 학습 멘토다. "
+        "답변은 항상 핵심적이고 명료하게 작성한다. "
+        "최신 정보가 필요한 질문(예: 주가, 뉴스)에는 검색 도구를 사용하되, "
+        "검색 결과를 투자 결론으로 단정하지 않는다. "
+        "답변은 3줄 이내로 작성한다."
+    ),
 )
 
 # [Google 검색 도구(Grounding) 설정]
@@ -108,6 +113,8 @@ def generate_finmate_reply(
     # -----------------------------------------------------------
     user_prompt = (
         mode_prefix
+        + build_prompt_reminder("chat")
+        + "\n"
         + "다음은 지금까지의 대화 기록입니다.\n"
         + history_text
         + "\n\n"
@@ -126,4 +133,4 @@ def generate_finmate_reply(
 
     response = chat_session.send_message(user_prompt)
     
-    return response.text
+    return ensure_safe_llm_text(response.text, "chat")

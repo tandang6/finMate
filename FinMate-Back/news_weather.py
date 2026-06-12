@@ -12,6 +12,7 @@ import time
 
 from config import settings  # 환경 설정 (API Key 등)
 from bot import client       # bot.py에서 이미 초기화된 Gemini Client 재사용 (리소스 절약)
+from llm_guardrails import build_prompt_reminder, sanitize_llm_payload
 
 
 # ==============================================================================
@@ -273,6 +274,7 @@ def generate_weather_and_cards_with_gemini(top_news):
 - 과장된 멘트 대신, 차분하고 근거 있는 톤을 사용.
 - 투자 조언(매수/매도, 특정 종목 추천)은 하지마.
 - 시장을 '날씨'에 비유해서 감정적으로 이해하기 쉽게 설명하는 역할.
+{build_prompt_reminder("news_weather")}
 
 weather 의미:
 - SUNNY : 전반적으로 상승, 훈풍, 낙관적인 분위기
@@ -333,7 +335,7 @@ weather 의미:
 
     # 문자열을 Python 딕셔너리로 변환
     data = json.loads(raw)
-    return data
+    return sanitize_llm_payload(data, "news_weather")
 
 
 # ==============================================================================
