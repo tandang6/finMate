@@ -436,7 +436,7 @@ const AIMentorChat = () => {
 };
 
 // --- [PAGE] 대시보드 페이지 ---
-const DashboardPage = ({ marketWeatherData, macroData, macroInsight, newsWeather, calendarEvents }) => {
+const DashboardPage = ({ marketWeatherData, macroData, macroInsight, newsWeather, calendarEvents, logicAlerts }) => {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
@@ -578,22 +578,49 @@ const DashboardPage = ({ marketWeatherData, macroData, macroInsight, newsWeather
                 <button className="text-xs font-bold bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition">+ 추가</button>
               </div>
               <div className="space-y-4">
-                 <div className="p-4 bg-red-50/80 border border-red-100 rounded-2xl flex gap-3 items-start animate-pulse shadow-sm">
-                  <div className="w-2.5 h-2.5 mt-1.5 bg-red-500 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-bold text-gray-500 bg-white border border-gray-200 px-1.5 py-0.5 rounded">삼성전자 &lt; 70,000원</span>
-                    </div>
-                    <p className="text-sm font-bold text-red-700 leading-tight">현재가 69,500원!<br/>매수 구간에 도달했습니다.</p>
+                {logicAlerts.length === 0 && (
+                  <div className="p-4 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-medium text-gray-500">
+                    로직 알림 데이터를 불러오는 중입니다.
                   </div>
-                </div>
-                <div className="p-4 bg-white border border-gray-100 rounded-2xl flex gap-3 items-start opacity-70 hover:opacity-100 transition">
-                   <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
-                   <div>
-                     <span className="text-[10px] font-bold text-gray-400 border px-1.5 py-0.5 rounded">환율 &gt; 1,350원</span>
-                     <p className="text-sm font-medium text-gray-500 mt-0.5">현재 1,320원으로 조건 미충족</p>
-                   </div>
-                </div>
+                )}
+                {logicAlerts.map((alert) => {
+                  const isUnavailable = alert.status === "unavailable";
+                  const cardClass = alert.triggered
+                    ? "bg-red-50/80 border-red-100 shadow-sm"
+                    : "bg-white border-gray-100 opacity-80 hover:opacity-100";
+                  const messageClass = alert.triggered
+                    ? "text-red-700 font-bold"
+                    : isUnavailable
+                      ? "text-gray-500 font-medium"
+                      : "text-gray-500 font-medium";
+                  return (
+                    <div
+                      key={alert.id}
+                      className={`p-4 border rounded-2xl flex gap-3 items-start transition ${cardClass}`}
+                    >
+                      {alert.triggered ? (
+                        <div className="w-2.5 h-2.5 mt-1.5 bg-red-500 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>
+                      ) : (
+                        <CheckCircle className={`w-4 h-4 mt-0.5 ${isUnavailable ? "text-gray-300" : "text-green-500"}`} />
+                      )}
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] font-bold text-gray-500 bg-white border border-gray-200 px-1.5 py-0.5 rounded">
+                            {alert.condition_label}
+                          </span>
+                        </div>
+                        <p className={`text-sm leading-tight ${messageClass}`}>
+                          {alert.message}
+                        </p>
+                        {alert.as_of_date && (
+                          <p className="text-[10px] text-gray-400 mt-1">
+                            기준일 {alert.as_of_date}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </section>
             
@@ -765,6 +792,34 @@ const [macroInsight, setMacroInsight] = useState("");
     fetchNewsWeather();
   }, []);
 
+  const [logicAlerts, setLogicAlerts] = useState([]);
+
+  useEffect(() => {
+    const fetchLogicAlerts = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/api/logic-alerts");
+        if (!res.ok) {
+          throw new Error("logic-alerts api error");
+        }
+        const data = await res.json();
+        setLogicAlerts(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error("로직 알림 데이터 불러오기 실패:", e);
+        setLogicAlerts([
+          {
+            id: "logic-alerts-unavailable",
+            status: "unavailable",
+            triggered: false,
+            condition_label: "로직 알림",
+            message: "실제 시장 데이터를 불러오지 못했습니다.",
+          },
+        ]);
+      }
+    };
+
+    fetchLogicAlerts();
+  }, []);
+
   if (!isLoggedIn) return <LoginScreen onLogin={handleLogin} />;
 
 
@@ -793,6 +848,7 @@ const [macroInsight, setMacroInsight] = useState("");
               macroInsight={macroInsight}
               newsWeather={newsWeather}
               calendarEvents={calendarEvents}
+              logicAlerts={logicAlerts}
             />
           }
         />
