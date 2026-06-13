@@ -1,5 +1,7 @@
-export const STRATEGY_API_BASE = "http://localhost:8000/api/strategies";
-export const PLANNER_API_BASE = "http://localhost:8000/api/planner";
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000";
+
+export const STRATEGY_API_BASE = `${API_BASE_URL}/api/strategies`;
+export const PLANNER_API_BASE = `${API_BASE_URL}/api/planner`;
 export const USER_ID_KEY = "finmate-user-id";
 export const PLANNER_SELECTION_KEY = "finmate-selected-strategy-plan";
 
@@ -32,6 +34,26 @@ export const CHECK_STATUS_LABELS = {
   blocked: "보류",
   not_evaluated: "미평가",
 };
+
+export const STRATEGY_DISPLAY_NAMES = {
+  ma_support_retest: "이동평균 지지 재테스트",
+  resistance_breakout_retest: "저항선 돌파 후 재테스트",
+  pullback: "눌림목",
+  darvas_range_breakout: "다르바스/레인지 돌파",
+  ma_reclaim: "이동평균 탈환",
+  value_quality: "가치/퀄리티",
+  pead: "PEAD (실적 발표 후 드리프트)",
+  sector_rotation: "섹터 로테이션",
+  vcp: "VCP (변동성 수축 패턴)",
+  gap_and_go: "갭 앤 고",
+  rsi_oversold_rebound: "RSI 과매도 반등",
+  bb_squeeze: "볼린저 스퀴즈",
+  relative_strength_leader: "상대 강도 리더",
+};
+
+export function getStrategyDisplayName(strategy) {
+  return STRATEGY_DISPLAY_NAMES[strategy?.strategy_id] ?? strategy?.name ?? "";
+}
 
 export function getPlannerUserId() {
   const existing = window.localStorage.getItem(USER_ID_KEY);

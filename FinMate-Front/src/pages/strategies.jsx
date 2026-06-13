@@ -15,10 +15,27 @@ import {
   STRATEGY_API_BASE,
   SUPPORTED_SYMBOLS,
   fetchJson,
-  formatDateTime,
   savePlannerSelection,
 } from "../lib/strategy-flow";
 
+
+function formatSymbolPrice(value) {
+  if (!Number.isFinite(value)) {
+    return "가격 확인 중";
+  }
+  return `${new Intl.NumberFormat("ko-KR").format(Math.round(value))}원`;
+}
+
+function formatBasisDate(value) {
+  if (!value) {
+    return "기준일 확인 중";
+  }
+  return new Date(`${value}T00:00:00+09:00`).toLocaleDateString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}
 
 function SectionShell({ title, description, children, emptyText }) {
   return (
@@ -46,6 +63,10 @@ export default function StrategiesPage() {
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState("");
   const [catalogReloadKey, setCatalogReloadKey] = useState(0);
+  const [symbolQuotes, setSymbolQuotes] = useState(null);
+  const [symbolQuotesLoading, setSymbolQuotesLoading] = useState(true);
+  const [symbolQuotesError, setSymbolQuotesError] = useState("");
+  const [symbolQuotesReloadKey, setSymbolQuotesReloadKey] = useState(0);
   const [selectedSymbolCode, setSelectedSymbolCode] = useState(SUPPORTED_SYMBOLS[0].symbol_code);
   const [symbolQuery, setSymbolQuery] = useState("");
   const deferredSymbolQuery = useDeferredValue(symbolQuery);
@@ -67,12 +88,47 @@ export default function StrategiesPage() {
     );
   }, [deferredSymbolQuery]);
 
+  const symbolQuoteMap = useMemo(() => {
+    if (!symbolQuotes?.symbols) {
+      return {};
+    }
+    return Object.fromEntries(symbolQuotes.symbols.map((quote) => [quote.symbol_code, quote]));
+  }, [symbolQuotes]);
+
   const catalogMap = useMemo(() => {
     if (!catalog) {
       return {};
     }
     return Object.fromEntries(catalog.strategies.map((strategy) => [strategy.strategy_id, strategy]));
   }, [catalog]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSymbolQuotes() {
+      try {
+        setSymbolQuotesLoading(true);
+        setSymbolQuotesError("");
+        const data = await fetchJson(`${STRATEGY_API_BASE}/symbols`);
+        if (!cancelled) {
+          setSymbolQuotes(data);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setSymbolQuotesError(error.message);
+        }
+      } finally {
+        if (!cancelled) {
+          setSymbolQuotesLoading(false);
+        }
+      }
+    }
+
+    loadSymbolQuotes();
+    return () => {
+      cancelled = true;
+    };
+  }, [symbolQuotesReloadKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -186,16 +242,6 @@ export default function StrategiesPage() {
     navigate("/planner", { state: { plannerSelection } });
   };
 
-  const sourceName = evaluationResponse?.source?.provider_id === "mock"
-    ? "Slice 1 데모 데이터"
-    : evaluationResponse?.source?.provider_name;
-
-  const sourceMeta = evaluationResponse?.source?.provider_id === "mock"
-    ? "고정 fixture · 규칙 테스트용"
-    : evaluationResponse?.source
-      ? `${evaluationResponse.source.dataset} · ${evaluationResponse.source.provenance}`
-      : "";
-
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-[#F8F9FD]">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -223,7 +269,10 @@ export default function StrategiesPage() {
               </Link>
               <button
                 type="button"
-                onClick={() => setEvaluationReloadKey((current) => current + 1)}
+                onClick={() => {
+                  setSymbolQuotesReloadKey((current) => current + 1);
+                  setEvaluationReloadKey((current) => current + 1);
+                }}
                 className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white hover:bg-indigo-700"
               >
                 <RefreshCw className="w-4 h-4" />
@@ -252,6 +301,15 @@ export default function StrategiesPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
             {visibleSymbols.map((symbol) => {
               const isActive = symbol.symbol_code === selectedSymbolCode;
+              const quote = symbolQuoteMap[symbol.symbol_code];
+              const priceLabel = quote
+                ? formatSymbolPrice(quote.latest_close)
+                : symbolQuotesLoading
+                  ? "불러오는 중"
+                  : "가격 없음";
+              const basisLabel = quote?.as_of_date
+                ? `${formatBasisDate(quote.as_of_date)} 기준`
+                : DATA_STATUS_LABELS[quote?.data_status] ?? "기준일 확인 중";
               return (
                 <button
                   key={symbol.symbol_code}
@@ -263,13 +321,26 @@ export default function StrategiesPage() {
                       : "border-gray-100 bg-gray-50 hover:bg-white hover:border-indigo-200 text-gray-700"
                   }`}
                 >
-                  <div className="text-base font-bold">{symbol.symbol_name}</div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="text-base font-bold">{symbol.symbol_name}</div>
+                    <div className={`text-sm font-bold whitespace-nowrap ${isActive ? "text-white" : "text-gray-900"}`}>
+                      {priceLabel}
+                    </div>
+                  </div>
                   <div className={`text-sm mt-1 ${isActive ? "text-indigo-100" : "text-gray-400"}`}>
                     {symbol.symbol_code} · {symbol.sector}
+                  </div>
+                  <div className={`text-xs mt-2 ${isActive ? "text-indigo-100" : "text-gray-400"}`}>
+                    {basisLabel}
                   </div>
                 </button>
               );
             })}
+          </div>
+          <div className="mt-4 text-xs leading-relaxed text-gray-500">
+            {symbolQuotes?.price_basis ??
+              "공공데이터포털 금융위원회_주식시세정보 최신 일봉 종가 기준"}
+            {symbolQuotesError && ` · 가격 정보 일부를 불러오지 못했어요: ${symbolQuotesError}`}
           </div>
         </section>
 
@@ -299,35 +370,6 @@ export default function StrategiesPage() {
 
         {!catalogLoading && !evaluationLoading && !catalogError && !evaluationError && evaluationResponse && (
           <>
-            <section className="bg-white rounded-[1.75rem] border border-gray-100 shadow-sm px-5 py-5 md:px-6 md:py-6">
-              <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
-                <div className="rounded-[1.25rem] border border-gray-100 bg-gray-50 px-4 py-4">
-                  <div className="text-xs font-bold uppercase tracking-[0.18em] text-gray-400 mb-2">기준 종목</div>
-                  <div className="text-lg font-bold text-gray-900">{evaluationResponse.symbol.symbol_name}</div>
-                  <div className="text-sm text-gray-500 mt-1">{evaluationResponse.symbol.symbol_code} · {evaluationResponse.timeframe}</div>
-                </div>
-                <div className="rounded-[1.25rem] border border-gray-100 bg-gray-50 px-4 py-4">
-                  <div className="text-xs font-bold uppercase tracking-[0.18em] text-gray-400 mb-2">데이터 상태</div>
-                  <div className="text-lg font-bold text-gray-900">
-                    {DATA_STATUS_LABELS[evaluationResponse.data_status] ?? evaluationResponse.data_status}
-                  </div>
-                  <div className="text-sm text-gray-500 mt-1">stale / partial / unavailable은 데이터 부족으로 표시돼요.</div>
-                </div>
-                <div className="rounded-[1.25rem] border border-gray-100 bg-gray-50 px-4 py-4">
-                  <div className="text-xs font-bold uppercase tracking-[0.18em] text-gray-400 mb-2">데이터 출처</div>
-                  <div className="text-lg font-bold text-gray-900">{sourceName}</div>
-                  <div className="text-sm text-gray-500 mt-1">
-                    {sourceMeta}
-                  </div>
-                </div>
-                <div className="rounded-[1.25rem] border border-gray-100 bg-gray-50 px-4 py-4">
-                  <div className="text-xs font-bold uppercase tracking-[0.18em] text-gray-400 mb-2">평가 시각</div>
-                  <div className="text-lg font-bold text-gray-900">{formatDateTime(evaluationResponse.evaluated_at)}</div>
-                  <div className="text-sm text-gray-500 mt-1">catalog 버전 {evaluationResponse.catalog_version}</div>
-                </div>
-              </div>
-            </section>
-
             <div className="space-y-10">
               <SectionShell
                 title="적용 가능"

@@ -1,14 +1,16 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from functools import lru_cache
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from config import settings
 from market_data.mock_provider import MockMarketDataProvider
 from market_data.provider import MarketDataProvider
+from market_data.public_data_provider import get_public_data_market_data_provider
 from market_data.types import MarketDataSourceInfo, MarketDataStatus
 from strategies import (
     StrategyActivationState,
@@ -56,6 +58,27 @@ class NonLiveCatalogGroup(BaseModel):
     strategies: list[StrategyDefinition] = Field(default_factory=list)
 
 
+class StrategySymbolQuote(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    symbol_code: str
+    symbol_name: str
+    market: str
+    latest_close: float | None = None
+    currency: Literal["KRW"] = "KRW"
+    as_of_date: date | None = None
+    data_status: MarketDataStatus
+    status_reason: str | None = None
+
+
+class StrategySymbolQuotesResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source: MarketDataSourceInfo
+    price_basis: str
+    symbols: list[StrategySymbolQuote] = Field(default_factory=list)
+
+
 class StrategyEvaluateResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -84,6 +107,8 @@ _NON_LIVE_STATES: tuple[StrategyActivationState, ...] = (
 
 @lru_cache(maxsize=1)
 def get_market_data_provider() -> MarketDataProvider:
+    if settings.DATA_GO_KR_SERVICE_KEY:
+        return get_public_data_market_data_provider()
     return MockMarketDataProvider()
 
 
@@ -163,9 +188,38 @@ def _build_non_live_catalog_groups() -> list[NonLiveCatalogGroup]:
     ]
 
 
+def _build_symbol_quote(provider: MarketDataProvider, ticker_code: str) -> StrategySymbolQuote:
+    series = provider.get_stock_daily_bars(ticker_code, lookback=1)
+    latest_bar = series.bars[-1] if series.bars else None
+
+    return StrategySymbolQuote(
+        symbol_code=series.instrument_code,
+        symbol_name=series.instrument_name or ticker_code,
+        market=series.market,
+        latest_close=latest_bar.close if latest_bar else None,
+        as_of_date=series.as_of_date,
+        data_status=series.data_status,
+        status_reason=series.status_reason,
+    )
+
+
 @router.get("/catalog", response_model=StrategyCatalogPayload)
 def get_strategy_catalog() -> StrategyCatalogPayload:
     return load_strategy_catalog()
+
+
+@router.get("/symbols", response_model=StrategySymbolQuotesResponse)
+def get_strategy_symbols(
+    provider: MarketDataProvider = Depends(get_market_data_provider),
+) -> StrategySymbolQuotesResponse:
+    return StrategySymbolQuotesResponse(
+        source=provider.source_info,
+        price_basis="공공데이터포털 금융위원회_주식시세정보 최신 일봉 종가 기준",
+        symbols=[
+            _build_symbol_quote(provider, ticker.symbol_code)
+            for ticker in provider.list_supported_tickers()
+        ],
+    )
 
 
 @router.post("/evaluate", response_model=StrategyEvaluateResponse)

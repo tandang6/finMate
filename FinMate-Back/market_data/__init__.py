@@ -1,5 +1,6 @@
 from .mock_provider import MockMarketDataProvider
 from .provider import MarketDataProvider
+from .public_data_provider import PublicDataMarketDataProvider
 from .types import (
     BenchmarkDefinition,
     DailyBar,
@@ -19,5 +20,6 @@ __all__ = [
     "MarketDataStatus",
     "MarketInstrumentType",
     "MockMarketDataProvider",
+    "PublicDataMarketDataProvider",
     "SupportedTicker",
 ]

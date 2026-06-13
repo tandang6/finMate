@@ -11,6 +11,7 @@ from typing import List, Dict, Any
 from bot import client
 from ecos import get_policy_rate_last_n, get_kospi_last_n
 from config import settings
+from llm_guardrails import build_prompt_reminder, ensure_safe_llm_text
 
 # 도미노 분석에 사용할 Gemini 모델 (예: gemini-2.0-flash)
 GEMINI_MODEL_FOR_DOMINO = settings.GEMINI_MODEL_DEFAULT
@@ -121,6 +122,7 @@ def get_domino_insight(n: int = 6) -> Dict[str, Any]:
   두 지표의 관계를 1~2문장으로 쉽고 차분하게 설명해줘.
 - 과장된 멘트는 피하고, 데이터에 기반한 톤을 유지해.
 - 특정 종목의 매수/매도 조언은 하지 마.
+{build_prompt_reminder("domino_insight")}
 
 [입력 데이터]
 {series_text}
@@ -142,7 +144,7 @@ def get_domino_insight(n: int = 6) -> Dict[str, Any]:
             contents=prompt,
         )
         
-        insight = (response.text or "").strip()
+        insight = ensure_safe_llm_text(response.text, "domino_insight")
         
         # 빈 응답이 올 경우에 대한 방어 코드
         if not insight:

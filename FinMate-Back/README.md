@@ -9,9 +9,15 @@
     3.  `GET  /api/news-weather`   : 뉴스 기반 AI 시장 날씨 요약 및 뉴스 카드
     4.  `GET  /api/macro-chart`    : 금리 + KOSPI 도미노 차트 데이터
     5.  `GET  /api/macro-insight`  : 차트 데이터 기반 AI 한 줄 분석
-    6.  `GET  /api/calendar/earnings-demo` : DART 기반 기업설명회(IR)·잠정실적 캘린더 이벤트
-    7.  `POST /api/calendar/insight`       : 캘린더 이벤트 클릭 시 AI 해설 생성
-    8.  `GET  /api/calendar/dart-debug`    : DART 원본 응답 확인용 디버그 API
+    6.  `GET  /api/logic-alerts` : 공공데이터/ECOS 기반 규칙 알림
+    7.  `GET  /api/calendar/earnings-demo` : DART 기반 실적 발표·실적 관련 IR 캘린더 이벤트
+    8.  `POST /api/calendar/insight`       : 캘린더 이벤트 클릭 시 AI 해설 생성
+    9.  `POST /api/calendar/post-result`   : 발표 후 실적 수치와 주가 반응 데이터
+    10. `GET  /api/calendar/dart-debug`    : DART 원본 응답 확인용 디버그 API
+    11. `GET  /api/strategies/catalog`     : 전략 카탈로그
+    12. `GET  /api/strategies/symbols`     : 지원 종목과 최신 일봉 종가
+    13. `POST /api/strategies/evaluate`    : 전략 평가 결과
+    14. `/api/planner/*`                   : 전략 계획 저장/조회/수정/삭제
 
 ## 2\. 사전 준비 사항
 
@@ -21,11 +27,12 @@
       - Gemini API Key (Google AI Studio)
       - Naver Developers API Key (검색 API - Client ID/Secret)
       - DART API Key (금융감독원 전자공시시스템 OpenDART)
+      - 공공데이터포털 Service Key (금융위원회 주식시세정보)
   - **운영체제:** Windows 기준 설명 (Mac/Linux 명령어는 별도 표기)
 
 # 🔑 [FinMate] API 키 발급 가이드
 
-프로젝트 실행을 위해서는 **Google(AI), Naver(뉴스), 한국은행(경제지표), 금융감독원 DART(기업 공시/캘린더)** 총 4곳의 API 키가 필요합니다.
+프로젝트 실행을 위해서는 **Google(AI), Naver(뉴스), 한국은행(경제지표), 금융감독원 DART(기업 공시/캘린더), 공공데이터포털(주식 일봉)** API 키가 필요합니다.
 발급받은 키는 `.env` 파일에 복사해서 넣어야 합니다.
 
 -----
@@ -104,6 +111,26 @@ AI 챗봇, 뉴스 요약, 도미노 분석 기능에 사용됩니다.
 
 -----
 
+## 5\. 공공데이터포털 Service Key (주식 일봉/전략 평가/주가 반응용)
+
+전략 평가, 지원 종목 최신 종가, 삼성전자 가격 알림, 캘린더 발표 후 주가 반응 계산에 사용됩니다.
+
+  * **발급 사이트:** [공공데이터포털](https://www.data.go.kr/)
+  * **사용 데이터:** 금융위원회_주식시세정보
+  * **발급 순서:**
+    1.  공공데이터포털 로그인 후 `금융위원회_주식시세정보`를 검색합니다.
+    2.  활용신청을 완료하고 일반 인증키(Service Key)를 확인합니다.
+    3.  발급된 키를 복사합니다.
+  * **`.env` 설정:**
+    ```properties
+    DATA_GO_KR_SERVICE_KEY=복사한_Service_Key
+    DATA_GO_KR_CACHE_TTL_SECONDS=
+    ```
+
+`DATA_GO_KR_CACHE_TTL_SECONDS`를 비워두면 공공데이터 갱신 시점(다음 KST 평일 13:10)을 기준으로 캐시 만료 시간이 자동 계산됩니다.
+
+-----
+
 ## 📂 최종 `.env` 파일 예시
 
 위에서 받은 키들을 모아 `main.py`가 있는 폴더에 `.env` 파일을 만들고 아래처럼 채워주세요.
@@ -113,7 +140,7 @@ AI 챗봇, 뉴스 요약, 도미노 분석 기능에 사용됩니다.
 # 1. Google Gemini API
 # ==========================================
 GEMINI_API_KEY=AIzaSyD......(내용생략)
-MODEL_NAME=gemini-2.0-flash
+GEMINI_MODEL_DEFAULT=gemini-2.0-flash
 
 # ==========================================
 # 2. Naver Developers API (News)
@@ -130,6 +157,12 @@ ECOS_AUTH_KEY=123456......
 # 4. 금융감독원 DART API (Calendar)
 # ==========================================
 DART_API_KEY=abcd1234......
+
+# ==========================================
+# 5. 공공데이터포털 금융위원회 주식시세정보
+# ==========================================
+DATA_GO_KR_SERVICE_KEY=service-key......
+DATA_GO_KR_CACHE_TTL_SECONDS=
 ```
 
 > **⚠️ 주의:** 이 `.env` 파일은 타인에게 노출되면 안 되므로 GitHub 등에 업로드하지 마세요\! (`.gitignore`에 추가 필수)
@@ -180,7 +213,7 @@ pip install -r requirements.txt
 ```properties
 # .env 파일 내용 예시
 GEMINI_API_KEY=AIzaSy...
-MODEL_NAME=gemini-2.0-flash
+GEMINI_MODEL_DEFAULT=gemini-2.0-flash
 
 NAVER_CLIENT_ID=네이버_클라이언트_아이디
 NAVER_CLIENT_SECRET=네이버_시크릿
@@ -188,6 +221,9 @@ NAVER_CLIENT_SECRET=네이버_시크릿
 ECOS_AUTH_KEY=한국은행_인증키
 
 DART_API_KEY=금융감독원_OpenDART_인증키
+
+DATA_GO_KR_SERVICE_KEY=공공데이터포털_Service_Key
+DATA_GO_KR_CACHE_TTL_SECONDS=
 ```
 
 ### (4) 서버 실행
@@ -300,9 +336,33 @@ uvicorn main:app --reload --port 8000
 
 -----
 
-### (6) 🗓️ DART 경제 이벤트 캘린더 (`GET /api/calendar/earnings-demo`)
+### (6) 🚨 규칙 알림 (`GET /api/logic-alerts`)
 
-  - **설명:** DART API에서 최근 30일~향후 30일 범위의 기업설명회(IR) 및 영업(잠정)실적 관련 공시를 가져와 프론트엔드 캘린더 이벤트 형식으로 반환합니다. `DART_API_KEY`가 없으면 기존 `data/earnings_events.json` 정적 파일로 폴백합니다.
+  - **설명:** 삼성전자 가격, 원/달러 환율처럼 미리 정의한 조건의 현재 상태를 반환합니다. 삼성전자 가격 알림은 `DATA_GO_KR_SERVICE_KEY`, 환율 알림은 `ECOS_AUTH_KEY`가 필요합니다.
+  - **Response:**
+
+<!-- end list -->
+
+```json
+[
+  {
+    "id": "samsung-under-70000",
+    "kind": "stock_price",
+    "title": "삼성전자",
+    "condition_label": "삼성전자 < 70,000원",
+    "status": "fresh",
+    "triggered": false,
+    "current_value_label": "72,000원",
+    "message": "현재가 72,000원으로 조건 미충족"
+  }
+]
+```
+
+-----
+
+### (7) 🗓️ DART 경제 이벤트 캘린더 (`GET /api/calendar/earnings-demo`)
+
+  - **설명:** DART API에서 최근 30일~향후 30일 범위의 실적 발표 공시와 실적 관련 IR 공시만 가져와 프론트엔드 캘린더 이벤트 형식으로 반환합니다. `DART_API_KEY`가 없으면 기존 `data/earnings_events.json` 정적 파일로 폴백합니다.
   - **Response:**
 
 <!-- end list -->
@@ -327,7 +387,7 @@ uvicorn main:app --reload --port 8000
 
 -----
 
-### (7) 💬 캘린더 이벤트 AI 해설 (`POST /api/calendar/insight`)
+### (8) 💬 캘린더 이벤트 AI 해설 (`POST /api/calendar/insight`)
 
   - **설명:** 프론트엔드에서 캘린더 이벤트를 클릭했을 때 이벤트 정보를 보내면, Gemini가 투자자가 확인할 포인트를 짧게 해설합니다.
   - **Request:**
@@ -351,6 +411,95 @@ uvicorn main:app --reload --port 8000
 ```json
 { "insight": "IR 일정에서는 실적 전망, 수주 흐름, 향후 가이던스 변화 여부를 확인하는 것이 좋습니다." }
 ```
+
+-----
+
+### (9) 📌 캘린더 발표 후 결과 (`POST /api/calendar/post-result`)
+
+  - **설명:** 캘린더 이벤트를 기준으로 OpenDART 공시 원문에서 매출, 영업이익, 순이익을 추출하고, 공공데이터포털 일봉으로 발표일/D+1 주가 반응을 계산합니다. 실적 수치와 주가 반응은 가능한 범위만 `available`, `partial`, `unavailable` 상태로 반환됩니다.
+  - **필요 키:** `DART_API_KEY`, `DATA_GO_KR_SERVICE_KEY`
+  - **Request:**
+
+<!-- end list -->
+
+```json
+{
+  "id": "dart-20260514900123",
+  "title": "삼성생명 2026년 1분기 경영실적 발표",
+  "datetime": "2026-05-14T14:00:00",
+  "type": "EARNINGS",
+  "companyName": "삼성생명",
+  "stockCode": "032830",
+  "rceptNo": "20260514900123"
+}
+```
+
+  - **Response:**
+
+<!-- end list -->
+
+```json
+{
+  "eventId": "dart-20260514900123",
+  "status": "partial",
+  "sourceNote": "실적 수치와 주가 반응은 각각 OpenDART 원문과 일봉 데이터에서 가능한 범위만 표시합니다.",
+  "earnings": {
+    "title": "실적 발표 결과",
+    "status": "available",
+    "source": "OpenDART 공시 원문",
+    "items": [
+      { "k": "매출", "v": "10조 1,000억원" },
+      { "k": "영업이익", "v": "5,000억원" }
+    ]
+  },
+  "priceMove": {
+    "title": "발표 직후 주가 반응",
+    "status": "partial",
+    "source": "공공데이터포털 금융위원회 주식시세정보",
+    "items": [
+      { "k": "당일 등락", "v": "+1.2%" },
+      { "k": "D+1 종가 반응", "v": "다음 거래일 데이터 없음" }
+    ]
+  },
+  "commentary": {
+    "title": "해설",
+    "status": "available",
+    "source": "FinMate rules",
+    "bullets": ["발표 후 1~3거래일은 수급과 저항 구간 반응을 함께 확인합니다."]
+  }
+}
+```
+
+-----
+
+### (10) 🧭 전략 카탈로그 (`GET /api/strategies/catalog`)
+
+  - **설명:** 전략 정의, activation state, live/education/deferred 상태를 반환합니다.
+
+-----
+
+### (11) 💹 지원 종목 가격 (`GET /api/strategies/symbols`)
+
+  - **설명:** 전략 평가에서 지원하는 한국 종목과 최신 일봉 종가, 기준일, 데이터 상태를 반환합니다. `DATA_GO_KR_SERVICE_KEY`가 있으면 공공데이터포털 일봉을 사용하고, 없으면 mock fixture를 사용합니다.
+
+-----
+
+### (12) 🧪 전략 평가 (`POST /api/strategies/evaluate`)
+
+  - **설명:** 선택 종목의 일봉 조건을 live 전략별로 평가하고, 적용 가능/조건 부족/데이터 부족 그룹으로 반환합니다.
+  - **Request:**
+
+<!-- end list -->
+
+```json
+{ "symbol": "005930" }
+```
+
+-----
+
+### (13) 📝 전략 계획 저장 (`/api/planner/*`)
+
+  - **설명:** `/strategies`에서 선택한 평가 스냅샷을 기반으로 계획을 저장, 조회, 수정, 삭제합니다. 주요 엔드포인트는 `GET/POST /api/planner/plans`, `GET/PUT/DELETE /api/planner/plans/{plan_id}`입니다.
 
 ## 6\. 프론트엔드 연동 시 주의사항
 

@@ -14,6 +14,8 @@ import {
   CheckCircle,
 } from "lucide-react";
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000";
+
 // -----------------------------
 // 자산 필터 옵션
 // -----------------------------
@@ -164,17 +166,23 @@ function parseInsightSections(text) {
 // -----------------------------
 const POST_EVENT_DUMMY = {
   "kr-earnings-37": {
+    status: "available",
+    sourceNote: "이 이벤트는 촬영/시연을 위해 보존된 고정 데이터입니다.",
     earnings: {
       title: "2025년 3분기 실적",
+      status: "available",
+      source: "시연용 고정 데이터",
       items: [
-        { k: "매출", v: "XX조원 (YoY +X%)" },
-        { k: "영업이익", v: "X.X조원 (YoY +X%)" },
-        { k: "컨센서스 대비", v: "매출 상회 / 이익 상회(가정)" },
+        { k: "매출", v: "79조 1,400억원 (시연용)" },
+        { k: "영업이익", v: "12조 1,600억원 (시연용)" },
+        { k: "순이익", v: "9조 8,800억원 (시연용)" },
         { k: "포인트", v: "메모리 가격 반등 + AI 수요 기대감(가정)" },
       ],
     },
     priceMove: {
       title: "발표 직후 주가 반응",
+      status: "available",
+      source: "시연용 고정 데이터",
       items: [
         { k: "당일", v: "+3.2% (가정)" },
         { k: "장중 변동", v: "초반 급등 → 일부 차익실현(가정)" },
@@ -183,6 +191,8 @@ const POST_EVENT_DUMMY = {
     },
     commentary: {
       title: "해설",
+      status: "available",
+      source: "시연용 고정 데이터",
       bullets: [
         "결과가 ‘기대 대비 상회’면 단기적으로 매수세가 유입되기 쉬움",
         "하지만 가이던스/업황 코멘트가 약하면 ‘사실매도’가 나올 수 있음",
@@ -192,6 +202,29 @@ const POST_EVENT_DUMMY = {
   },
 };
 
+
+function buildEventCacheKey(event) {
+  if (!event) return "";
+  return event.id || `${event.stockCode || event.stock_code || ""}-${event.datetime || ""}-${event.title || ""}`;
+}
+
+function getPostEventFallback(event) {
+  if (!event) return null;
+  const stockCode = event.stockCode || event.stock_code || "";
+  const dateKey = event.datetime ? getDateKey(event.datetime) : "";
+  return POST_EVENT_DUMMY[event.id] || (stockCode === "005930" && dateKey === "2025-10-30"
+    ? POST_EVENT_DUMMY["kr-earnings-37"]
+    : null);
+}
+
+function buildPostResultPayload(event) {
+  return {
+    ...event,
+    companyName: event.companyName || event.company_name || "",
+    stockCode: event.stockCode || event.stock_code || "",
+    rceptNo: event.rceptNo || event.rcept_no || "",
+  };
+}
 
 
 // -----------------------------
@@ -230,6 +263,11 @@ const EconomicCalendarPage = () => {
   // AI 해설 캐시 (이벤트별 인사이트 저장)
   const [insightCache, setInsightCache] = useState({});
 
+  // 발표 후 결과 상태/캐시
+  const [postResultCache, setPostResultCache] = useState({});
+  const [isLoadingPostResult, setIsLoadingPostResult] = useState(false);
+  const [postResultError, setPostResultError] = useState(null);
+
   // 헤더 높이(상단바 높이). 필요하면 숫자만 수정.
   const HEADER_H = 64;
   
@@ -245,7 +283,7 @@ const EconomicCalendarPage = () => {
         setIsLoadingEvents(true);
         setEventsError(null);
 
-        const res = await fetch("http://localhost:8000/api/calendar/earnings-demo");
+        const res = await fetch(`${API_BASE_URL}/api/calendar/earnings-demo`);
         if (!res.ok) throw new Error("calendar events api error");
 
         const data = await res.json();
@@ -304,10 +342,58 @@ const EconomicCalendarPage = () => {
     return filteredEventsForSelectedDate.find((ev) => ev.id === selectedEventId) || null;
   }, [filteredEventsForSelectedDate, selectedEventId]);
 
-  const postDummy = useMemo(() => {
-    if (!selectedEvent) return null;
-    return POST_EVENT_DUMMY[selectedEvent.id] || null;
-  }, [selectedEvent]);
+  const selectedEventCacheKey = useMemo(() => buildEventCacheKey(selectedEvent), [selectedEvent]);
+  const postFallback = useMemo(() => getPostEventFallback(selectedEvent), [selectedEvent]);
+  const postResult = selectedEventCacheKey ? postResultCache[selectedEventCacheKey] || null : null;
+  const postDisplay = postResult || postFallback;
+
+  const postSections = useMemo(() => {
+    if (!postDisplay) return [];
+    return [
+      { key: "earnings", label: "실적 발표 결과", data: postDisplay.earnings },
+      { key: "priceMove", label: "주가 변동", data: postDisplay.priceMove },
+    ].filter((section) => section.data);
+  }, [postDisplay]);
+
+  // -----------------------------
+  // Post Result Fetch (패널 열림 + 발표 후 탭 + 이벤트 선택 시)
+  // -----------------------------
+  useEffect(() => {
+    const fetchPostResult = async () => {
+      if (!isInsightOpen || !selectedEvent || insightTab !== "post") return;
+
+      const cacheKey = buildEventCacheKey(selectedEvent);
+      if (postResultCache[cacheKey]) {
+        setPostResultError(null);
+        setIsLoadingPostResult(false);
+        return;
+      }
+
+      try {
+        setIsLoadingPostResult(true);
+        setPostResultError(null);
+
+        const res = await fetch(`${API_BASE_URL}/api/calendar/post-result`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(buildPostResultPayload(selectedEvent)),
+        });
+
+        if (!res.ok) throw new Error("post result api error");
+
+        const data = await res.json();
+        setPostResultCache((prev) => ({ ...prev, [cacheKey]: data }));
+      } catch (e) {
+        console.error("발표 후 결과 불러오기 실패:", e);
+        setPostResultError(e);
+      } finally {
+        setIsLoadingPostResult(false);
+      }
+    };
+
+    fetchPostResult();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInsightOpen, selectedEventId, insightTab]);
 
   // -----------------------------
   // Insight Fetch (패널 열림 + 이벤트 선택 시)
@@ -342,7 +428,7 @@ const EconomicCalendarPage = () => {
           type: selectedEvent.type || "",
         };
 
-        const res = await fetch("http://localhost:8000/api/calendar/insight", {
+        const res = await fetch(`${API_BASE_URL}/api/calendar/insight`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -376,6 +462,8 @@ const EconomicCalendarPage = () => {
     setSelectedEventId(null);
     setAiInsight("");
     setInsightError(null);
+    setPostResultError(null);
+    setIsLoadingPostResult(false);
     // 날짜 바꾸면 패널 닫고 싶으면 아래 주석 해제
     // setIsInsightOpen(false);
   };
@@ -386,6 +474,8 @@ const EconomicCalendarPage = () => {
     setIsInsightOpen(false);
     setAiInsight("");
     setInsightError(null);
+    setPostResultError(null);
+    setIsLoadingPostResult(false);
   };
 
   const handlePrevMonth = () => {
@@ -422,6 +512,7 @@ const EconomicCalendarPage = () => {
     setInsightTab(defaultTab);
 	
     setInsightError(null);
+    setPostResultError(null);
 
     // 캐시 있으면 즉시 표시
     const cacheKey =
@@ -664,7 +755,7 @@ const EconomicCalendarPage = () => {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Info className="w-4 h-4 text-indigo-600" />
-                    <h3 className="text-sm font-semibold text-gray-800">AI 해설</h3>
+                    <h3 className="text-sm font-semibold text-gray-800">일정 해설</h3>
                   </div>
 
                   <button
@@ -678,7 +769,7 @@ const EconomicCalendarPage = () => {
 
                 {!selectedEvent && (
                   <div className="flex-1 flex items-center justify-center text-sm text-gray-400 text-center px-6">
-                    왼쪽에서 일정을 클릭하면 AI 해설이 열립니다.
+                    왼쪽에서 일정을 클릭하면 발표 전/후 해설이 열립니다.
                   </div>
                 )}
 
@@ -746,68 +837,67 @@ const EconomicCalendarPage = () => {
                       {/* (A) 발표 후 탭 */}
                       {insightTab === "post" && (
 					  <div className="space-y-4 mt-3">
-						{!postDummy ? (
+						{isLoadingPostResult && !postDisplay && (
+						  <div className="text-sm text-gray-500 inline-flex items-center gap-2">
+							<Loader2 className="w-4 h-4 animate-spin" />
+							발표 후 데이터를 확인하는 중...
+						  </div>
+						)}
+
+						{postResultError && (
+						  <div className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-xl p-3">
+							발표 후 API를 불러오지 못했어요. 사용 가능한 로컬/시연 데이터가 있으면 대신 표시합니다.
+						  </div>
+						)}
+
+						{postDisplay?.sourceNote && (
+						  <div className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-xl p-3">
+							{postDisplay.sourceNote}
+						  </div>
+						)}
+
+						{!isLoadingPostResult && !postDisplay ? (
 						  <div className="text-sm text-gray-500 bg-gray-50 border border-gray-200 rounded-xl p-3">
-							발표 후 더미 데이터가 아직 없습니다.
+							발표 후 결과를 만들 수 있는 종목코드, 공시번호, 일봉 데이터가 아직 연결되지 않았습니다.
 						  </div>
 						) : (
 						  <>
-							{/* ✅ 실적 결과 (회색 계열) */}
-							<div className="rounded-2xl border border-gray-200 bg-white p-4">
-							  <div className="text-sm font-semibold text-gray-900 mb-2">
-								실적 발표 결과
-							  </div>
-							  <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
-								<div className="text-xs font-semibold text-gray-900 mb-2">
-								  {postDummy.earnings.title}
-								</div>
-								<ul className="space-y-1 text-xs text-gray-800">
-								  {postDummy.earnings.items.map((it, i) => (
-									<li key={i} className="flex gap-2">
-									  <span className="w-24 text-gray-500">{it.k}</span>
-									  <span className="font-medium">{it.v}</span>
-									</li>
-								  ))}
-								</ul>
-							  </div>
-							</div>
-
-							{/* ✅ 주가 변동 (회색 계열 + 아이콘 제거) */}
-							<div className="rounded-2xl border border-gray-200 bg-white p-4">
-							  <div className="text-sm font-semibold text-gray-900 mb-2">
-								주가 변동
-							  </div>
-							  <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
-								<div className="text-xs font-semibold text-gray-900 mb-2">
-								  {postDummy.priceMove.title}
-								</div>
-								<ul className="space-y-1 text-xs text-gray-800">
-								  {postDummy.priceMove.items.map((it, i) => (
-									<li key={i} className="flex gap-2">
-									  <span className="w-24 text-gray-500">{it.k}</span>
-									  <span className="font-medium">{it.v}</span>
-									</li>
-								  ))}
-								</ul>
-							  </div>
-							</div>
-
-							{/* ✅ 발표 후 해설 (회색 계열, 리스트만 강조) */}
-							<div className="rounded-2xl border border-gray-200 bg-white p-4">
-							  <div className="text-sm font-semibold text-gray-900 mb-2">해설</div>
-							  <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
-								<div className="text-xs font-semibold text-gray-900 mb-2">
-								  {postDummy.commentary.title}
-								</div>
-								<ul className="list-disc list-inside space-y-1 text-xs text-gray-800 leading-relaxed">
-								  {postDummy.commentary.bullets.map((b, i) => (
-									<li key={i}>{b}</li>
-								  ))}
-								</ul>
-							  </div>
-							</div>
-						  </>
-						)}
+								{postSections.map((section) => (
+								  <div key={section.key} className="rounded-2xl border border-gray-200 bg-white p-4">
+									<div className="mb-2">
+									  <div className="text-sm font-semibold text-gray-900">{section.label}</div>
+									</div>
+									<div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+								  <div className="flex items-start justify-between gap-2 mb-2">
+									<div className="text-xs font-semibold text-gray-900">
+									  {section.data.title}
+									</div>
+									{section.data.source && (
+									  <div className="text-[10px] text-gray-400 text-right">
+										{section.data.source}
+									  </div>
+									)}
+								  </div>
+								  <ul className="space-y-1 text-xs text-gray-800">
+									{(section.data.items || []).map((it, i) => (
+									  <li key={i} className="flex gap-2">
+										<span className="w-24 shrink-0 text-gray-500">{it.k}</span>
+										<span className="font-medium">
+										  {it.v}
+										  {it.note && (
+											<span className="block text-[10px] font-normal text-gray-400">
+											  {it.note}
+											</span>
+										  )}
+										</span>
+									  </li>
+									))}
+								  </ul>
+									</div>
+								  </div>
+								))}
+							  </>
+							)}
 					  </div>
 					)}
 

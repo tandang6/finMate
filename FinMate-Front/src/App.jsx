@@ -12,6 +12,8 @@ import FirstPurchasePlanner from './pages/planner';
 import MyPlansPage from './pages/my-plans';
 import StrategiesPage from './pages/strategies';
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000";
+
 // --- [DATA] 목업 데이터 (백엔드 없이 작동하기 위한 가짜 데이터) ---
 
 const MOCK_WEATHER = {
@@ -251,7 +253,7 @@ const AIMentorChat = () => {
     // 최근 9개만 잘라서 history로 보냄 (백엔드도 한 번 더 방어적으로 자르지만 여기서도 슬라이스)
     const history = historyMessages.slice(-9);
 
-    const res = await fetch("http://localhost:8000/api/chat", {
+    const res = await fetch(`${API_BASE_URL}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -436,7 +438,14 @@ const AIMentorChat = () => {
 };
 
 // --- [PAGE] 대시보드 페이지 ---
-const DashboardPage = ({ marketWeatherData, macroData, macroInsight, newsWeather }) => {
+const DashboardPage = ({ marketWeatherData, macroData, macroInsight, newsWeather, calendarEvents, logicAlerts }) => {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const upcomingEvents = (calendarEvents || [])
+    .filter((ev) => ev?.datetime && new Date(ev.datetime) >= todayStart)
+    .sort((a, b) => new Date(a.datetime) - new Date(b.datetime))
+    .slice(0, 3);
   return (
     <main className="max-w-7xl mx-auto px-4 lg:px-6 py-8 animate-in fade-in duration-500">
         {/* 상단 날씨 섹션 */}
@@ -571,22 +580,49 @@ const DashboardPage = ({ marketWeatherData, macroData, macroInsight, newsWeather
                 <button className="text-xs font-bold bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition">+ 추가</button>
               </div>
               <div className="space-y-4">
-                 <div className="p-4 bg-red-50/80 border border-red-100 rounded-2xl flex gap-3 items-start animate-pulse shadow-sm">
-                  <div className="w-2.5 h-2.5 mt-1.5 bg-red-500 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-bold text-gray-500 bg-white border border-gray-200 px-1.5 py-0.5 rounded">삼성전자 &lt; 70,000원</span>
-                    </div>
-                    <p className="text-sm font-bold text-red-700 leading-tight">현재가 69,500원!<br/>매수 구간에 도달했습니다.</p>
+                {logicAlerts.length === 0 && (
+                  <div className="p-4 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-medium text-gray-500">
+                    로직 알림 데이터를 불러오는 중입니다.
                   </div>
-                </div>
-                <div className="p-4 bg-white border border-gray-100 rounded-2xl flex gap-3 items-start opacity-70 hover:opacity-100 transition">
-                   <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
-                   <div>
-                     <span className="text-[10px] font-bold text-gray-400 border px-1.5 py-0.5 rounded">환율 &gt; 1,350원</span>
-                     <p className="text-sm font-medium text-gray-500 mt-0.5">현재 1,320원으로 조건 미충족</p>
-                   </div>
-                </div>
+                )}
+                {logicAlerts.map((alert) => {
+                  const isUnavailable = alert.status === "unavailable";
+                  const cardClass = alert.triggered
+                    ? "bg-red-50/80 border-red-100 shadow-sm"
+                    : "bg-white border-gray-100 opacity-80 hover:opacity-100";
+                  const messageClass = alert.triggered
+                    ? "text-red-700 font-bold"
+                    : isUnavailable
+                      ? "text-gray-500 font-medium"
+                      : "text-gray-500 font-medium";
+                  return (
+                    <div
+                      key={alert.id}
+                      className={`p-4 border rounded-2xl flex gap-3 items-start transition ${cardClass}`}
+                    >
+                      {alert.triggered ? (
+                        <div className="w-2.5 h-2.5 mt-1.5 bg-red-500 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>
+                      ) : (
+                        <CheckCircle className={`w-4 h-4 mt-0.5 ${isUnavailable ? "text-gray-300" : "text-green-500"}`} />
+                      )}
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] font-bold text-gray-500 bg-white border border-gray-200 px-1.5 py-0.5 rounded">
+                            {alert.condition_label}
+                          </span>
+                        </div>
+                        <p className={`text-sm leading-tight ${messageClass}`}>
+                          {alert.message}
+                        </p>
+                        {alert.as_of_date && (
+                          <p className="text-[10px] text-gray-400 mt-1">
+                            기준일 {alert.as_of_date}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </section>
             
@@ -595,21 +631,58 @@ const DashboardPage = ({ marketWeatherData, macroData, macroInsight, newsWeather
             
             {/* 5. 경제 캘린더 */}
             <section className="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-sm">
-              <h3 className="font-bold mb-5 flex gap-2 items-center text-gray-800"><Calendar className="w-5 h-5 text-indigo-600"/> 주요 경제 일정</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between group cursor-pointer">
-                  <div className="flex items-center gap-4">
-                    <div className="flex flex-col items-center bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 group-hover:bg-indigo-50 group-hover:border-indigo-100 transition">
-                      <span className="text-[10px] font-bold text-gray-400 group-hover:text-indigo-400">TODAY</span>
-                      <span className="text-lg font-bold text-gray-800 group-hover:text-indigo-700">12</span>
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm text-gray-800">미국 CPI 발표</p>
-                      <p className="text-xs text-gray-400">21:30 예정 • 예측 3.1%</p>
-                    </div>
-                  </div>
-                  <span className="bg-red-50 text-red-600 border border-red-100 text-[10px] font-bold px-2 py-1 rounded-lg">High</span>
-                </div>
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="font-bold flex gap-2 items-center text-gray-800">
+                  <Calendar className="w-5 h-5 text-indigo-600"/> 주요 경제 일정
+                </h3>
+                <Link to="/calendar" className="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-full transition">
+                  전체보기 <ChevronRight className="inline w-3 h-3" />
+                </Link>
+              </div>
+              <div className="space-y-3">
+                {upcomingEvents.length === 0 && (
+                  <p className="text-xs text-gray-400 text-center py-4">예정된 일정이 없습니다.</p>
+                )}
+                {upcomingEvents.map((ev) => {
+                  const d = new Date(ev.datetime);
+                  const todayMidnight = new Date();
+                  todayMidnight.setHours(0, 0, 0, 0);
+                  const tomorrowMidnight = new Date(todayMidnight);
+                  tomorrowMidnight.setDate(tomorrowMidnight.getDate() + 1);
+                  const isToday = d >= todayMidnight && d < tomorrowMidnight;
+                  const dayNum = d.getDate();
+                  const importanceStyle =
+                    ev.importance === "very_high"
+                      ? "bg-red-50 text-red-600 border-red-100"
+                      : "bg-orange-50 text-orange-600 border-orange-100";
+                  const importanceText =
+                    ev.importance === "very_high" ? "매우중요" : "중요";
+                  return (
+                    <Link
+                      key={ev.id}
+                      to="/calendar"
+                      className="flex items-center justify-between group cursor-pointer hover:bg-gray-50 rounded-2xl p-1 -mx-1 transition"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`flex flex-col items-center px-3 py-2 rounded-xl border transition ${isToday ? "bg-gray-900 border-gray-900 text-white" : "bg-gray-50 border-gray-100 group-hover:bg-indigo-50 group-hover:border-indigo-100"}`}>
+                          <span className={`text-[10px] font-bold ${isToday ? "text-gray-300" : "text-gray-400 group-hover:text-indigo-400"}`}>
+                            {isToday ? "TODAY" : `${d.getMonth() + 1}월`}
+                          </span>
+                          <span className={`text-lg font-bold ${isToday ? "text-white" : "text-gray-800 group-hover:text-indigo-700"}`}>
+                            {dayNum}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm text-gray-800 line-clamp-1">{ev.companyName}</p>
+                          <p className="text-xs text-gray-400 line-clamp-1">{ev.title}</p>
+                        </div>
+                      </div>
+                      <span className={`border text-[10px] font-bold px-2 py-1 rounded-lg ${importanceStyle}`}>
+                        {importanceText}
+                      </span>
+                    </Link>
+                  );
+                })}
               </div>
             </section>
           </div>
@@ -623,9 +696,17 @@ const FinMateApp = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
 
-  // 로그인 상태 관리
   const handleLogin = (userInfo) => { setIsLoggedIn(true); setUser(userInfo); };
   const handleLogout = () => { setIsLoggedIn(false); setUser(null); };
+
+  const [calendarEvents, setCalendarEvents] = useState([]);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/calendar/earnings-demo`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => setCalendarEvents(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
 
    // ✅ 도미노 차트 데이터 상태
   const [macroData, setMacroData] = useState(MOCK_MACRO_CHART);
@@ -633,7 +714,7 @@ const FinMateApp = () => {
   useEffect(() => {
     const fetchMacroData = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/macro-chart");
+        const res = await fetch(`${API_BASE_URL}/api/macro-chart`);
         if (!res.ok) {
           throw new Error("macro-chart api error");
         }
@@ -654,9 +735,17 @@ const [macroInsight, setMacroInsight] = useState("");
 
   useEffect(() => {
     const fetchMacroInsight = async () => {
-      const res = await fetch("http://localhost:8000/api/macro-insight");
-      const data = await res.json();
-      setMacroInsight(data.insight);
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/macro-insight`);
+        if (!res.ok) {
+          throw new Error("macro-insight api error");
+        }
+        const data = await res.json();
+        setMacroInsight(data.insight || "");
+      } catch (e) {
+        console.error("매크로 인사이트 불러오기 실패:", e);
+        setMacroInsight("");
+      }
     };
     fetchMacroInsight();
   }, []);
@@ -671,7 +760,7 @@ const [macroInsight, setMacroInsight] = useState("");
   useEffect(() => {
     const fetchWeather = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/market-weather");
+        const res = await fetch(`${API_BASE_URL}/api/market-weather`);
         if (!res.ok) {
           throw new Error("market-weather api error");
         }
@@ -697,7 +786,7 @@ const [macroInsight, setMacroInsight] = useState("");
   useEffect(() => {
     const fetchNewsWeather = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/news-weather");
+        const res = await fetch(`${API_BASE_URL}/api/news-weather`);
         if (!res.ok) {
           throw new Error("news-weather api error");
         }
@@ -711,6 +800,34 @@ const [macroInsight, setMacroInsight] = useState("");
     };
 
     fetchNewsWeather();
+  }, []);
+
+  const [logicAlerts, setLogicAlerts] = useState([]);
+
+  useEffect(() => {
+    const fetchLogicAlerts = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/logic-alerts`);
+        if (!res.ok) {
+          throw new Error("logic-alerts api error");
+        }
+        const data = await res.json();
+        setLogicAlerts(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error("로직 알림 데이터 불러오기 실패:", e);
+        setLogicAlerts([
+          {
+            id: "logic-alerts-unavailable",
+            status: "unavailable",
+            triggered: false,
+            condition_label: "로직 알림",
+            message: "실제 시장 데이터를 불러오지 못했습니다.",
+          },
+        ]);
+      }
+    };
+
+    fetchLogicAlerts();
   }, []);
 
   if (!isLoggedIn) return <LoginScreen onLogin={handleLogin} />;
@@ -740,6 +857,8 @@ const [macroInsight, setMacroInsight] = useState("");
               macroData={macroData}
               macroInsight={macroInsight}
               newsWeather={newsWeather}
+              calendarEvents={calendarEvents}
+              logicAlerts={logicAlerts}
             />
           }
         />

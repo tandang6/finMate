@@ -1,1 +1,20 @@
 /forreadme/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# VSCode
+.vscode/
+
+# Environment
+.env
+
+# macOS
+.DS_Store
+
+# Local collaboration notes
+Obsidian-Vault/
+docs/ai-collab/
+docs/planner/

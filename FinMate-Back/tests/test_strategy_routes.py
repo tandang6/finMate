@@ -158,6 +158,28 @@ class StrategyRoutesTest(unittest.TestCase):
             },
         )
 
+    def test_symbols_route_returns_latest_close_and_price_basis(self) -> None:
+        with StrategyApiServer(MockMarketDataProvider()) as server:
+            response = requests.get(f"{server.base_url}/api/strategies/symbols", timeout=2)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+
+        self.assertEqual(payload["source"]["provider_id"], "mock_market_data")
+        self.assertEqual(
+            payload["price_basis"],
+            "공공데이터포털 금융위원회_주식시세정보 최신 일봉 종가 기준",
+        )
+
+        samsung = next(
+            symbol for symbol in payload["symbols"] if symbol["symbol_code"] == "005930"
+        )
+        self.assertEqual(samsung["symbol_name"], "삼성전자")
+        self.assertEqual(samsung["currency"], "KRW")
+        self.assertEqual(samsung["data_status"], "fresh")
+        self.assertGreater(samsung["latest_close"], 0)
+        self.assertRegex(samsung["as_of_date"], r"^\d{4}-\d{2}-\d{2}$")
+
     def test_evaluate_route_returns_grouped_live_results_for_supported_symbol(self) -> None:
         with StrategyApiServer(MockMarketDataProvider()) as server:
             response = requests.post(
