@@ -171,9 +171,9 @@ const POST_EVENT_DUMMY = {
       status: "available",
       source: "시연용 고정 데이터",
       items: [
-        { k: "매출", v: "XX조원 (YoY +X%)" },
-        { k: "영업이익", v: "X.X조원 (YoY +X%)" },
-        { k: "컨센서스 대비", v: "매출 상회 / 이익 상회(가정)" },
+        { k: "매출", v: "79조 1,400억원 (시연용)" },
+        { k: "영업이익", v: "12조 1,600억원 (시연용)" },
+        { k: "순이익", v: "9조 8,800억원 (시연용)" },
         { k: "포인트", v: "메모리 가격 반등 + AI 수요 기대감(가정)" },
       ],
     },
@@ -197,12 +197,6 @@ const POST_EVENT_DUMMY = {
         "발표 후 1~3일은 수급(기관/외국인)과 기술적 저항 구간 확인이 핵심",
       ],
     },
-    consensus: {
-      title: "예상치/컨센서스 대비",
-      status: "available",
-      source: "시연용 고정 데이터",
-      items: [{ k: "상태", v: "매출 상회 / 이익 상회(가정)" }],
-    },
   },
 };
 
@@ -219,36 +213,6 @@ function getPostEventFallback(event) {
   return POST_EVENT_DUMMY[event.id] || (stockCode === "005930" && dateKey === "2025-10-30"
     ? POST_EVENT_DUMMY["kr-earnings-37"]
     : null);
-}
-
-function postStatusLabel(status) {
-  switch (status) {
-    case "available":
-      return "확인";
-    case "partial":
-      return "부분";
-    case "manual_required":
-      return "원문 파싱 필요";
-    case "not_available":
-      return "미제공";
-    case "unavailable":
-    default:
-      return "데이터 부족";
-  }
-}
-
-function postStatusChipClass(status) {
-  switch (status) {
-    case "available":
-      return "bg-emerald-50 text-emerald-700 border-emerald-100";
-    case "partial":
-    case "manual_required":
-      return "bg-amber-50 text-amber-700 border-amber-100";
-    case "not_available":
-    case "unavailable":
-    default:
-      return "bg-gray-50 text-gray-500 border-gray-200";
-  }
 }
 
 function buildPostResultPayload(event) {
@@ -386,11 +350,8 @@ const EconomicCalendarPage = () => {
     return [
       { key: "earnings", label: "실적 발표 결과", data: postDisplay.earnings },
       { key: "priceMove", label: "주가 변동", data: postDisplay.priceMove },
-      { key: "consensus", label: "예상치/컨센서스", data: postDisplay.consensus },
     ].filter((section) => section.data);
   }, [postDisplay]);
-
-  const commentarySection = postDisplay?.commentary || null;
 
   // -----------------------------
   // Post Result Fetch (패널 열림 + 발표 후 탭 + 이벤트 선택 시)
@@ -899,22 +860,12 @@ const EconomicCalendarPage = () => {
 						  </div>
 						) : (
 						  <>
-							{postSections.map((section) => (
-							  <div key={section.key} className="rounded-2xl border border-gray-200 bg-white p-4">
-								<div className="flex items-center justify-between gap-2 mb-2">
-								  <div className="text-sm font-semibold text-gray-900">
-									{section.label}
-								  </div>
-								  <span
-									className={
-									  "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border " +
-									  postStatusChipClass(section.data.status)
-									}
-								  >
-									{postStatusLabel(section.data.status)}
-								  </span>
-								</div>
-								<div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+								{postSections.map((section) => (
+								  <div key={section.key} className="rounded-2xl border border-gray-200 bg-white p-4">
+									<div className="mb-2">
+									  <div className="text-sm font-semibold text-gray-900">{section.label}</div>
+									</div>
+									<div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
 								  <div className="flex items-start justify-between gap-2 mb-2">
 									<div className="text-xs font-semibold text-gray-900">
 									  {section.data.title}
@@ -929,48 +880,22 @@ const EconomicCalendarPage = () => {
 									{(section.data.items || []).map((it, i) => (
 									  <li key={i} className="flex gap-2">
 										<span className="w-24 shrink-0 text-gray-500">{it.k}</span>
-										<span className="font-medium">{it.v}</span>
+										<span className="font-medium">
+										  {it.v}
+										  {it.note && (
+											<span className="block text-[10px] font-normal text-gray-400">
+											  {it.note}
+											</span>
+										  )}
+										</span>
 									  </li>
 									))}
 								  </ul>
-								</div>
-							  </div>
-							))}
-
-							{commentarySection && (
-							  <div className="rounded-2xl border border-gray-200 bg-white p-4">
-								<div className="flex items-center justify-between gap-2 mb-2">
-								  <div className="text-sm font-semibold text-gray-900">해설</div>
-								  <span
-									className={
-									  "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border " +
-									  postStatusChipClass(commentarySection.status)
-									}
-								  >
-									{postStatusLabel(commentarySection.status)}
-								  </span>
-								</div>
-								<div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
-								  <div className="flex items-start justify-between gap-2 mb-2">
-									<div className="text-xs font-semibold text-gray-900">
-									  {commentarySection.title}
 									</div>
-									{commentarySection.source && (
-									  <div className="text-[10px] text-gray-400 text-right">
-										{commentarySection.source}
-									  </div>
-									)}
 								  </div>
-								  <ul className="list-disc list-inside space-y-1 text-xs text-gray-800 leading-relaxed">
-									{(commentarySection.bullets || []).map((b, i) => (
-									  <li key={i}>{b}</li>
-									))}
-								  </ul>
-								</div>
-							  </div>
+								))}
+							  </>
 							)}
-						  </>
-						)}
 					  </div>
 					)}
 

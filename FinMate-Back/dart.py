@@ -1,8 +1,12 @@
 # dart.py
 # 금융감독원 전자공시시스템(DART) API 연동 모듈
-# - 기업설명회(IR) / 실적발표 공시 목록을 가져와 캘린더 이벤트 형식으로 변환합니다.
+# - 실적·잠정실적 공시와 실적 관련 IR 일정을 캘린더 이벤트 형식으로 변환합니다.
 
+import html
+import io
+import re
 import requests
+import zipfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Tuple
@@ -17,11 +21,24 @@ DART_API_KEY = settings.DART_API_KEY
 DART_BASE_URL = "https://opendart.fss.or.kr/api"
 
 # 공시 유형 코드
-# I = 거래소공시 (기업설명회(IR)개최 포함)
-# B = 주요사항보고 (영업(잠정)실적 포함)
+# I = 거래소공시. 영업(잠정)실적(공정공시)와 기업설명회(IR)가 모두 섞여 들어옵니다.
+EARNINGS_REPORT_KEYWORDS = [
+    "영업(잠정)실적",
+    "영업실적",
+    "잠정실적",
+    "실적발표",
+    "경영실적 발표",
+    "경영실적발표",
+    "분기실적",
+]
+
+IR_REPORT_KEYWORDS = ["기업설명회"]
+
 PBLNTF_TYPES = [
-    ("I", ["기업설명회"]),               # 거래소공시 → 기업설명회(IR)개최 필터
-    ("B", ["잠정실적", "영업실적"]),      # 주요사항보고 → 잠정실적 필터
+    (
+        "I",
+        EARNINGS_REPORT_KEYWORDS + IR_REPORT_KEYWORDS,
+    ),
 ]
 
 # 대형주 목록 (very_high 중요도 부여)
@@ -31,6 +48,76 @@ LARGE_CAP_NAMES = [
     "NAVER", "카카오", "현대모비스", "삼성물산", "셀트리온",
     "KB금융", "신한지주", "하나금융", "우리금융", "삼성생명",
 ]
+
+# Toss 증시캘린더처럼 국내 주요 기업의 실적발표 일정을 우선 노출하기 위한 범위입니다.
+# DART 기업설명회 원문 조회는 비용이 있으므로 이 목록에 해당하는 회사만 상세 확인합니다.
+EARNINGS_CALENDAR_COMPANY_NAMES = tuple(
+    dict.fromkeys(
+        LARGE_CAP_NAMES
+        + [
+            "현대자동차",
+            "LG전자",
+            "LG이노텍",
+            "LG",
+            "SK",
+            "SK텔레콤",
+            "SK스퀘어",
+            "SK이노베이션",
+            "SKC",
+            "삼성전기",
+            "삼성에스디에스",
+            "삼성SDS",
+            "삼성화재",
+            "삼성카드",
+            "HD현대",
+            "HD현대일렉트릭",
+            "HD현대중공업",
+            "HD한국조선해양",
+            "HD현대미포",
+            "두산에너빌리티",
+            "한화에어로스페이스",
+            "한화솔루션",
+            "현대건설",
+            "현대글로비스",
+            "현대제철",
+            "대한항공",
+            "크래프톤",
+            "엔씨소프트",
+            "아모레퍼시픽",
+            "KT",
+            "KT&G",
+            "카카오뱅크",
+            "카카오페이",
+        ]
+    )
+)
+
+EARNINGS_IR_TEXT_KEYWORDS = [
+    "실적",
+    "경영실적",
+    "분기실적",
+    "결산실적",
+    "실적발표",
+    "어닝콜",
+    "earnings",
+    "quarterly results",
+]
+
+IR_EVENT_DATE_LABELS = [
+    "개최일시",
+    "행사일시",
+    "설명회일시",
+    "IR일정",
+    "일시",
+]
+
+MAX_IR_DETAIL_FETCHES = 80
+
+_DATE_TIME_RE = re.compile(
+    r"(20\d{2})\s*[.\-/년]\s*(\d{1,2})\s*[.\-/월]\s*(\d{1,2})\s*일?"
+    r"(?:\s*(\d{1,2})\s*(?::|시)\s*(\d{2})?)?",
+    re.IGNORECASE,
+)
 
 
 # ==============================================================================
@@ -88,6 +175,59 @@ def _fetch_dart_list(
         return []
 
 
+def _fetch_dart_document_text(rcept_no: str) -> str:
+    """
+    DART 공시 원문(document.xml)을 텍스트로 변환합니다.
+
+    기업설명회(IR) 목록 제목만으로는 실적발표 일정인지 구분하기 어렵기 때문에,
+    원문에 "경영실적", "실적발표", "어닝콜" 같은 문구가 있는지 확인합니다.
+    """
+    if not DART_API_KEY or not rcept_no:
+        return ""
+
+    params = {
+        "crtfc_key": DART_API_KEY,
+        "rcept_no": rcept_no,
+    }
+
+    try:
+        res = requests.get(f"{DART_BASE_URL}/document.xml", params=params, timeout=20)
+        if res.status_code != 200:
+            return ""
+
+        payload = io.BytesIO(res.content)
+        if zipfile.is_zipfile(payload):
+            payload.seek(0)
+            chunks: List[str] = []
+            with zipfile.ZipFile(payload) as archive:
+                for name in archive.namelist():
+                    if name.endswith("/"):
+                        continue
+                    chunks.append(_strip_markup(_decode_bytes(archive.read(name))))
+            return " ".join(chunk for chunk in chunks if chunk)
+
+        return _strip_markup(_decode_bytes(res.content))
+
+    except Exception:
+        return ""
+
+
+def _decode_bytes(raw: bytes) -> str:
+    for encoding in ("utf-8", "cp949", "euc-kr"):
+        try:
+            return raw.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("utf-8", errors="ignore")
+
+
+def _strip_markup(text: str) -> str:
+    text = re.sub(r"<!\[CDATA\[(.*?)\]\]>", r"\1", text, flags=re.DOTALL)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = html.unescape(text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
 # ==============================================================================
 # 3. 이벤트 변환 및 중요도 판정
 # ==============================================================================
@@ -98,7 +238,90 @@ def _get_importance(corp_name: str) -> str:
     return "high"
 
 
-def _to_calendar_event(item: Dict) -> Dict:
+def _normalize_for_match(value: str) -> str:
+    return re.sub(r"\s+", "", value or "")
+
+
+def _contains_keyword(value: str, keywords: List[str]) -> bool:
+    normalized_value = _normalize_for_match(value).lower()
+    return any(_normalize_for_match(keyword).lower() in normalized_value for keyword in keywords)
+
+
+def _is_direct_earnings_report(report_name: str) -> bool:
+    return _contains_keyword(report_name, EARNINGS_REPORT_KEYWORDS) and not _contains_keyword(
+        report_name,
+        IR_REPORT_KEYWORDS,
+    )
+
+
+def _is_ir_report(report_name: str) -> bool:
+    return _contains_keyword(report_name, IR_REPORT_KEYWORDS)
+
+
+def _is_calendar_company(corp_name: str) -> bool:
+    normalized_corp = _normalize_for_match(corp_name)
+    for name in EARNINGS_CALENDAR_COMPANY_NAMES:
+        normalized_name = _normalize_for_match(name)
+        if len(normalized_name) <= 2:
+            if normalized_corp == normalized_name:
+                return True
+            continue
+        if normalized_name in normalized_corp:
+            return True
+    return False
+
+
+def _is_earnings_ir_text(text: str) -> bool:
+    return _contains_keyword(text, EARNINGS_IR_TEXT_KEYWORDS)
+
+
+def _format_rcept_datetime(rcept_dt: str) -> str:
+    try:
+        return datetime.strptime(rcept_dt, "%Y%m%d").strftime("%Y-%m-%dT09:00:00")
+    except ValueError:
+        return ""
+
+
+def _parse_datetime_match(match: re.Match) -> Optional[str]:
+    year, month, day, hour, minute = match.groups()
+    try:
+        parsed = datetime(
+            int(year),
+            int(month),
+            int(day),
+            int(hour or 9),
+            int(minute or 0),
+        )
+    except ValueError:
+        return None
+    return parsed.strftime("%Y-%m-%dT%H:%M:00")
+
+
+def _extract_event_datetime_from_text(text: str) -> Optional[str]:
+    normalized = re.sub(r"\s+", " ", text or "")
+    if not normalized:
+        return None
+
+    for corpus in (normalized, _normalize_for_match(normalized)):
+        for label in IR_EVENT_DATE_LABELS:
+            search_label = _normalize_for_match(label) if corpus != normalized else label
+            search_from = 0
+            while True:
+                idx = corpus.find(search_label, search_from)
+                if idx == -1:
+                    break
+                window = corpus[idx : idx + 140]
+                match = _DATE_TIME_RE.search(window)
+                if match:
+                    parsed = _parse_datetime_match(match)
+                    if parsed:
+                        return parsed
+                search_from = idx + len(search_label)
+
+    return None
+
+
+def _to_calendar_event(item: Dict, *, event_kind: str = "result", document_text: str = "") -> Dict:
     """
     DART 공시 항목 → 프론트엔드 캘린더 이벤트 형식 변환.
 
@@ -115,13 +338,18 @@ def _to_calendar_event(item: Dict) -> Dict:
     stock_code = item.get("stock_code") or ""
     report_nm  = item.get("report_nm", "")
 
-    # "20260601" → "2026-06-01T09:00:00"
-    try:
-        iso_dt = datetime.strptime(rcept_dt, "%Y%m%d").strftime("%Y-%m-%dT09:00:00")
-    except ValueError:
-        iso_dt = ""
-
+    iso_dt = _format_rcept_datetime(rcept_dt)
+    calendar_category = "earnings_result"
+    source_detail = "dart_result"
     title = f"{corp_name} {report_nm}"
+    description = title
+
+    if event_kind == "ir_schedule":
+        iso_dt = _extract_event_datetime_from_text(document_text) or iso_dt
+        calendar_category = "earnings_schedule"
+        source_detail = "dart_ir"
+        title = f"{corp_name} 실적발표"
+        description = f"{corp_name} 실적발표 일정 ({report_nm})"
 
     return {
         "id":          f"dart-{rcept_no}",
@@ -130,18 +358,49 @@ def _to_calendar_event(item: Dict) -> Dict:
         "country":     "KR",
         "type":        "EARNINGS",
         "importance":  _get_importance(corp_name),
-        "description": title,
+        "description": description,
         "asset":       "all",
         "stockCode":   stock_code,
         "companyName": corp_name,
         "rceptNo":     rcept_no,
         "source":      "dart",
+        "sourceDetail": source_detail,
+        "calendarCategory": calendar_category,
+        "rawReportName": report_nm,
         "location":    "-",
     }
 
 
+def _dedupe_company_day_events(events: List[Dict]) -> List[Dict]:
+    """
+    같은 회사/날짜에 실적 IR 일정과 잠정실적 공시가 같이 잡히면 일정 쪽을 우선합니다.
+    """
+    priority = {
+        "earnings_schedule": 0,
+        "earnings_result": 1,
+    }
+    selected: Dict[Tuple[str, str], Dict] = {}
+
+    for event in events:
+        key = (
+            event.get("companyName", ""),
+            (event.get("datetime") or "")[:10],
+        )
+        current = selected.get(key)
+        if current is None:
+            selected[key] = event
+            continue
+
+        event_rank = priority.get(event.get("calendarCategory"), 9)
+        current_rank = priority.get(current.get("calendarCategory"), 9)
+        if event_rank < current_rank:
+            selected[key] = event
+
+    return list(selected.values())
+
+
 # ==============================================================================
-# 4. 캐시 (1시간 TTL 인메모리 캐시)
+# 4. 캐시 (24시간 TTL 인메모리 캐시)
 # ==============================================================================
 
 _cache: Dict[str, Any] = {}
@@ -161,18 +420,19 @@ def _cache_set(key: str, data: Dict) -> None:
 
 
 # ==============================================================================
-# 5. 메인 함수: 캘린더용 실적·IR 일정 조회
+# 5. 메인 함수: 캘린더용 실적 일정 조회
 # ==============================================================================
 
 def get_dart_calendar(days_back: int = 30, days_ahead: int = 30) -> Dict[str, Any]:
     """
-    DART API에서 기업설명회·잠정실적 공시를 가져와 캘린더 이벤트로 반환합니다.
+    DART API에서 실적 공시와 실적 관련 IR 일정을 가져와 캘린더 이벤트로 반환합니다.
 
     전략:
-    - I타입(거래소공시):   "기업설명회" 키워드 → 기업설명회(IR)개최 포착
-    - B타입(주요사항보고): "잠정실적/영업실적" 키워드 → 실적 발표 포착
-    - 병렬 페이지 요청으로 속도 개선 (최대 15페이지 × 2타입)
-    - 1시간 인메모리 캐시 적용
+    - I타입(거래소공시): "영업(잠정)실적(공정공시)" 계열 포착
+    - 기업설명회(IR)는 원문 문서에 실적/경영실적 문구가 있을 때만 일정으로 노출
+    - 일반 기업설명회(IR)는 숨김
+    - 병렬 페이지 요청으로 속도 개선
+    - 24시간 인메모리 캐시 적용
     """
     if not DART_API_KEY:
         return {
@@ -193,14 +453,40 @@ def get_dart_calendar(days_back: int = 30, days_ahead: int = 30) -> Dict[str, An
         return cached
 
     MAX_PAGES = 7  # 7페이지 × 100건 = 700건/타입, 병렬로 ~5-8초
+    ir_detail_fetches = 0
 
     def _extract_events(items: List[Dict], keywords: List[str]) -> List[Dict]:
         """items 리스트에서 키워드 매칭 항목만 이벤트로 변환해 반환 (순수 함수)."""
+        nonlocal ir_detail_fetches
         result = []
         for item in items:
-            if not any(kw in item.get("report_nm", "") for kw in keywords):
+            report_name = item.get("report_nm", "")
+            corp_name = item.get("corp_name", "")
+
+            if not _contains_keyword(report_name, keywords):
                 continue
-            ev = _to_calendar_event(item)
+
+            if _is_direct_earnings_report(report_name):
+                if not _is_calendar_company(corp_name):
+                    continue
+                ev = _to_calendar_event(item, event_kind="result")
+            elif _is_ir_report(report_name):
+                if not _is_calendar_company(corp_name):
+                    continue
+                if ir_detail_fetches >= MAX_IR_DETAIL_FETCHES:
+                    continue
+                ir_detail_fetches += 1
+                document_text = _fetch_dart_document_text(item.get("rcept_no", ""))
+                if not _is_earnings_ir_text(document_text):
+                    continue
+                ev = _to_calendar_event(
+                    item,
+                    event_kind="ir_schedule",
+                    document_text=document_text,
+                )
+            else:
+                continue
+
             if ev["datetime"]:
                 result.append(ev)
         return result
@@ -238,6 +524,7 @@ def get_dart_calendar(days_back: int = 30, days_ahead: int = 30) -> Dict[str, An
                         seen_ids.add(ev["id"])
                         events.append(ev)
 
+    events = _dedupe_company_day_events(events)
     events.sort(key=lambda e: e["datetime"])
 
     result = {

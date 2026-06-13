@@ -245,6 +245,39 @@ class PublicDataMarketDataProviderTest(unittest.TestCase):
         self.assertEqual(provider.normalize_ticker("lges").symbol_code, "373220")
         self.assertIsNone(provider.normalize_ticker("999999"))
 
+    def test_daily_bars_accept_six_digit_krx_codes_outside_supported_universe(self) -> None:
+        session = FakeSession(
+            stock_payload(
+                [
+                    {
+                        "basDt": "20260610",
+                        "srtnCd": "032830",
+                        "itmsNm": "삼성생명",
+                        "mkp": "94000",
+                        "hipr": "95500",
+                        "lopr": "93500",
+                        "clpr": "95000",
+                        "trqu": "123456",
+                    },
+                ]
+            )
+        )
+        provider = PublicDataMarketDataProvider(
+            service_key="encoded%2Bkey%3D",
+            stock_price_url="https://example.com/stock",
+            session=session,
+        )
+
+        self.assertIsNone(provider.normalize_ticker("032830"))
+
+        series = provider.get_stock_daily_bars("032830", lookback=1)
+
+        self.assertEqual(series.instrument_code, "032830")
+        self.assertEqual(series.instrument_name, "삼성생명")
+        self.assertEqual(series.bars[-1].close, 95000.0)
+        self.assertEqual(series.benchmark_id, "kospi")
+        self.assertEqual(session.calls[0]["params"]["likeSrtnCd"], "032830")
+
 
 if __name__ == "__main__":
     unittest.main()

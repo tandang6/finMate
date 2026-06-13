@@ -324,8 +324,8 @@ def macro_insight():
 
 
 # ------------------------------------------------------------------------------
-# [3-f] 실적·IR 일정 API (/api/calendar/earnings-demo)
-# - DART API를 실시간으로 호출해 기업설명회·실적발표 공시 목록을 반환합니다.
+# [3-f] 실적 일정 API (/api/calendar/earnings-demo)
+# - DART API를 실시간으로 호출해 실적 공시와 실적 관련 IR 일정만 반환합니다.
 # - DART_API_KEY 미설정 시에만 정적 파일(earnings_events.json)로 폴백합니다.
 # ------------------------------------------------------------------------------
 @app.get("/api/calendar/earnings-demo")

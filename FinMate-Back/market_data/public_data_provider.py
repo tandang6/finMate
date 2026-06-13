@@ -148,7 +148,7 @@ class PublicDataMarketDataProvider(MarketDataProvider):
         return match.model_copy(deep=True) if match else None
 
     def get_stock_daily_bars(self, ticker: str, *, lookback: int | None = None) -> DailyBarSeries:
-        symbol = self._resolve_symbol(ticker)
+        symbol = self._resolve_symbol(ticker) or self._dynamic_krx_symbol(ticker)
         requested_lookback = lookback or DEFAULT_LOOKBACK
         if symbol is None:
             normalized_query = self._normalize_query(ticker) or ticker.strip() or "unknown"
@@ -194,10 +194,11 @@ class PublicDataMarketDataProvider(MarketDataProvider):
             )
 
         bars = bars[-requested_lookback:]
+        instrument_name = _stock_name_from_rows(rows) or symbol.symbol_name
         return DailyBarSeries(
             instrument_type=MarketInstrumentType.EQUITY,
             instrument_code=symbol.symbol_code,
-            instrument_name=symbol.symbol_name,
+            instrument_name=instrument_name,
             market=symbol.market,
             data_status=_classify_data_status(bars),
             source=self.source_info,
@@ -482,6 +483,18 @@ class PublicDataMarketDataProvider(MarketDataProvider):
             return None
         return self._ticker_lookup.get(normalized_key)
 
+    def _dynamic_krx_symbol(self, ticker: str) -> SupportedTicker | None:
+        normalized_key = self._normalize_query(ticker)
+        if not normalized_key or not normalized_key.isdigit() or len(normalized_key) != 6:
+            return None
+        return SupportedTicker(
+            symbol_code=normalized_key,
+            symbol_name=normalized_key,
+            market="KRX",
+            aliases=[],
+            primary_benchmark_id="kospi",
+        )
+
     def _unavailable_series(
         self,
         *,
@@ -593,6 +606,14 @@ def _copy_stock_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def _copy_daily_bars(bars: list[DailyBar]) -> list[DailyBar]:
     return [bar.model_copy(deep=True) for bar in bars]
+
+
+def _stock_name_from_rows(rows: list[dict[str, Any]]) -> str | None:
+    for row in rows:
+        name = str(row.get("itmsNm") or "").strip()
+        if name:
+            return name
+    return None
 
 
 def _rows_to_bars(rows: list[dict[str, Any]]) -> list[DailyBar]:
