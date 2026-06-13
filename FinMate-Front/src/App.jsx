@@ -12,6 +12,8 @@ import FirstPurchasePlanner from './pages/planner';
 import MyPlansPage from './pages/my-plans';
 import StrategiesPage from './pages/strategies';
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000";
+
 // --- [DATA] 목업 데이터 (백엔드 없이 작동하기 위한 가짜 데이터) ---
 
 const MOCK_WEATHER = {
@@ -251,7 +253,7 @@ const AIMentorChat = () => {
     // 최근 9개만 잘라서 history로 보냄 (백엔드도 한 번 더 방어적으로 자르지만 여기서도 슬라이스)
     const history = historyMessages.slice(-9);
 
-    const res = await fetch("http://localhost:8000/api/chat", {
+    const res = await fetch(`${API_BASE_URL}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -700,7 +702,7 @@ const FinMateApp = () => {
   const [calendarEvents, setCalendarEvents] = useState([]);
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/calendar/earnings-demo")
+    fetch(`${API_BASE_URL}/api/calendar/earnings-demo`)
       .then((r) => r.ok ? r.json() : [])
       .then((data) => setCalendarEvents(Array.isArray(data) ? data : []))
       .catch(() => {});
@@ -712,7 +714,7 @@ const FinMateApp = () => {
   useEffect(() => {
     const fetchMacroData = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/macro-chart");
+        const res = await fetch(`${API_BASE_URL}/api/macro-chart`);
         if (!res.ok) {
           throw new Error("macro-chart api error");
         }
@@ -733,9 +735,17 @@ const [macroInsight, setMacroInsight] = useState("");
 
   useEffect(() => {
     const fetchMacroInsight = async () => {
-      const res = await fetch("http://localhost:8000/api/macro-insight");
-      const data = await res.json();
-      setMacroInsight(data.insight);
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/macro-insight`);
+        if (!res.ok) {
+          throw new Error("macro-insight api error");
+        }
+        const data = await res.json();
+        setMacroInsight(data.insight || "");
+      } catch (e) {
+        console.error("매크로 인사이트 불러오기 실패:", e);
+        setMacroInsight("");
+      }
     };
     fetchMacroInsight();
   }, []);
@@ -750,7 +760,7 @@ const [macroInsight, setMacroInsight] = useState("");
   useEffect(() => {
     const fetchWeather = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/market-weather");
+        const res = await fetch(`${API_BASE_URL}/api/market-weather`);
         if (!res.ok) {
           throw new Error("market-weather api error");
         }
@@ -776,7 +786,7 @@ const [macroInsight, setMacroInsight] = useState("");
   useEffect(() => {
     const fetchNewsWeather = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/news-weather");
+        const res = await fetch(`${API_BASE_URL}/api/news-weather`);
         if (!res.ok) {
           throw new Error("news-weather api error");
         }
@@ -797,7 +807,7 @@ const [macroInsight, setMacroInsight] = useState("");
   useEffect(() => {
     const fetchLogicAlerts = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/logic-alerts");
+        const res = await fetch(`${API_BASE_URL}/api/logic-alerts`);
         if (!res.ok) {
           throw new Error("logic-alerts api error");
         }

@@ -1,5 +1,7 @@
-export const STRATEGY_API_BASE = "http://localhost:8000/api/strategies";
-export const PLANNER_API_BASE = "http://localhost:8000/api/planner";
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000";
+
+export const STRATEGY_API_BASE = `${API_BASE_URL}/api/strategies`;
+export const PLANNER_API_BASE = `${API_BASE_URL}/api/planner`;
 export const USER_ID_KEY = "finmate-user-id";
 export const PLANNER_SELECTION_KEY = "finmate-selected-strategy-plan";
 

@@ -14,6 +14,8 @@ import {
   CheckCircle,
 } from "lucide-react";
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000";
+
 // -----------------------------
 // 자산 필터 옵션
 // -----------------------------
@@ -281,7 +283,7 @@ const EconomicCalendarPage = () => {
         setIsLoadingEvents(true);
         setEventsError(null);
 
-        const res = await fetch("http://localhost:8000/api/calendar/earnings-demo");
+        const res = await fetch(`${API_BASE_URL}/api/calendar/earnings-demo`);
         if (!res.ok) throw new Error("calendar events api error");
 
         const data = await res.json();
@@ -371,7 +373,7 @@ const EconomicCalendarPage = () => {
         setIsLoadingPostResult(true);
         setPostResultError(null);
 
-        const res = await fetch("http://localhost:8000/api/calendar/post-result", {
+        const res = await fetch(`${API_BASE_URL}/api/calendar/post-result`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(buildPostResultPayload(selectedEvent)),
@@ -426,7 +428,7 @@ const EconomicCalendarPage = () => {
           type: selectedEvent.type || "",
         };
 
-        const res = await fetch("http://localhost:8000/api/calendar/insight", {
+        const res = await fetch(`${API_BASE_URL}/api/calendar/insight`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
