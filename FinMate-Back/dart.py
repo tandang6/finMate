@@ -134,6 +134,8 @@ def _to_calendar_event(item: Dict) -> Dict:
         "asset":       "all",
         "stockCode":   stock_code,
         "companyName": corp_name,
+        "rceptNo":     rcept_no,
+        "source":      "dart",
         "location":    "-",
     }
 

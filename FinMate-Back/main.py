@@ -27,6 +27,12 @@ from logic_alerts import get_logic_alerts       # 실제 시장 데이터 기반
 from domino_insight import get_domino_insight   # 거시경제 데이터 기반 AI 인사이트 생성
 
 from calendar_insight import generate_calendar_insight   # ✅ 캘린더 인사이트(해설) 모듈
+from calendar_post_result import (
+    CalendarPostResultRequest,
+    CalendarPostResultResponse,
+    build_calendar_post_result,
+    get_calendar_post_result_provider,
+)
 from dart import get_dart_calendar, get_dart_raw_sample  # DART 실적·IR 일정 실시간 조회
 from plan_db import init_db
 from plan_routes import router as planner_router
@@ -372,6 +378,21 @@ def calendar_insight(req: CalendarInsightRequest):
         if "429" in msg or "TooManyRequests" in msg:
             raise HTTPException(status_code=429, detail="Gemini rate limit exceeded")
         raise HTTPException(status_code=500, detail=f"insight 생성 오류: {e}")
+
+
+# ------------------------------------------------------------------------------
+# [3-g-2] 캘린더 발표 후 결과 API (/api/calendar/post-result)
+# - 실적 원문, 발표 후 주가 반응, 컨센서스 상태를 데이터 종류별로 나눠 반환합니다.
+# ------------------------------------------------------------------------------
+@app.post("/api/calendar/post-result", response_model=CalendarPostResultResponse)
+def calendar_post_result(req: CalendarPostResultRequest):
+    try:
+        return build_calendar_post_result(
+            req,
+            provider=get_calendar_post_result_provider(),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"post result 생성 오류: {e}")
 
 
 # ==============================================================================
