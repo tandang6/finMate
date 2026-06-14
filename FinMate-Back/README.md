@@ -18,6 +18,9 @@
     12. `GET  /api/strategies/symbols`     : 지원 종목과 최신 일봉 종가
     13. `POST /api/strategies/evaluate`    : 전략 평가 결과
     14. `/api/planner/*`                   : 전략 계획 저장/조회/수정/삭제
+  - 멘토링 피드백을 반영해 백엔드 구현에서는 단순 API 연결뿐 아니라 외부 API 호출 비용, 장애 대응, 데이터 상태 관리, LLM 응답 안전성을 함께 고려했습니다.
+  - 뉴스 시장 날씨는 Gemini 요약 실패 시 원문 뉴스 기반 fallback을 반환하고, DART 일정과 공공데이터 일봉은 캐시를 적용해 반복 호출을 줄였습니다.
+  - `llm_guardrails.py`를 통해 챗봇, 뉴스 날씨, 캘린더 인사이트, 도미노 인사이트의 공통 안전 규칙을 관리합니다.
 
 ## 2\. 사전 준비 사항
 
@@ -173,16 +176,23 @@ DATA_GO_KR_CACHE_TTL_SECONDS=
 FinMate/
  ├── FinMate-Front/   (React 프론트엔드)
  └── FinMate-Back/    (FastAPI 백엔드)
-      ├── main.py            # FastAPI 앱 진입점
-      ├── ecos.py            # 한국은행 데이터 크롤링
-      ├── bot.py             # AI 챗봇 로직
-      ├── news_weather.py    # (NEW) 네이버 뉴스 + AI 요약
-      ├── domino_insight.py  # (NEW) 거시경제 AI 분석
-      ├── calendar_insight.py # (NEW) 캘린더 이벤트 AI 해설
-      ├── dart.py            # (NEW) OpenDART 공시 기반 캘린더 이벤트 조회
-      ├── config.py          # 환경변수 관리 설정
-      ├── .env               # (필수) API Key 저장 파일
-      └── requirements.txt   # 라이브러리 목록
+      ├── main.py                 # FastAPI 앱 진입점, DART fallback, Gemini 429 처리
+      ├── ecos.py                 # 한국은행 경제지표 데이터 연동
+      ├── bot.py                  # AI 금융 멘토 챗봇, 공통 LLM 가드레일 적용
+      ├── llm_guardrails.py       # 공통 LLM 안전 규칙, 금지 패턴, fallback, 평가 케이스
+      ├── news_weather.py         # Naver 뉴스 + Gemini 요약 + 50분 캐시 + AI 실패 fallback
+      ├── domino_insight.py       # 거시경제 데이터 기반 AI 분석, 투자 권유 방지
+      ├── calendar_insight.py     # 캘린더 이벤트 AI 해설, 최신 사실 생성 제한
+      ├── dart.py                 # OpenDART 실적 일정 조회, 24시간 캐시, 실적 IR 필터링
+      ├── calendar_post_result.py # 발표 후 실적 수치/주가 반응/해설 구성
+      ├── logic_alerts.py         # 규칙 기반 시장 알림
+      ├── market_data/            # 공공데이터 일봉 provider, 데이터 상태 및 캐시 관리
+      ├── data/
+      │   └── earnings_events.json # DART API 사용 불가 시 일정 fallback 데이터
+      ├── tests/                  # LLM 가드레일, 뉴스 fallback, DART, 공공데이터 테스트
+      ├── config.py               # 환경변수 관리 설정
+      ├── .env                    # API Key 저장 파일
+      └── requirements.txt        # 라이브러리 목록
 ```
 
 ## 4\. 환경 설정 및 실행 (순서대로 진행)
@@ -234,11 +244,31 @@ uvicorn main:app --reload --port 8000
 
   - **정상 실행 확인:** 브라우저에서 `http://localhost:8000/docs` 접속 시 Swagger UI가 뜨면 성공입니다.
 
-## 5\. 주요 오픈 API 상세 명세
+## 5\. 멘토링 반영: 운영 안정성 및 LLM 안전성
+
+멘토링에서는 FinMate가 실제 서비스처럼 운영될 경우 발생할 수 있는 장애, 비용, LLM 응답 신뢰성 문제를 정리하는 것이 중요하다는 피드백을 받았습니다. 이를 반영해 백엔드에는 다음과 같은 보완을 적용했습니다.
+
+| 항목 | 구현 위치 | 반영 내용 |
+| --- | --- | --- |
+| 공통 LLM 가드레일 | `llm_guardrails.py` | 투자 권유, 매수/매도 지시, 특정 종목 추천, 수익 보장, 최신 사실 생성 등을 제한하는 공통 규칙과 금지 패턴을 분리했습니다. |
+| LLM 응답 후처리 | `bot.py`, `news_weather.py`, `calendar_insight.py`, `domino_insight.py` | Gemini 응답에 위험한 투자 권유성 표현이 포함되면 안전 fallback 문구로 대체합니다. |
+| LLM 안전성 테스트 | `tests/test_llm_guardrails.py` | 20개 위험 답변 케이스를 통해 금지 패턴 감지와 fallback 대체를 검증합니다. |
+| 뉴스/AI 호출 캐시 | `news_weather.py` | Naver 뉴스 수집과 Gemini 뉴스 요약 결과를 50분 동안 메모리에 저장해 반복 호출을 줄입니다. |
+| 뉴스 AI 실패 fallback | `news_weather.py`, `tests/test_news_weather.py` | Gemini quota/모델 오류가 발생해도 원문 뉴스 기반 카드와 안내 문구를 반환합니다. |
+| DART 일정 캐시 | `dart.py` | 동일 기간의 DART 실적 일정 조회 결과를 24시간 캐시합니다. |
+| DART 일정 필터링 | `dart.py`, `tests/test_dart_calendar.py` | 일반 IR을 그대로 노출하지 않고 실적 공시와 실적 관련 IR 일정만 캘린더에 남깁니다. |
+| DART 정적 데이터 fallback | `main.py`, `data/earnings_events.json` | DART API 키가 없거나 조회가 어려운 경우 정적 일정 데이터로 캘린더 흐름을 유지합니다. |
+| 공공데이터 일봉 캐시 | `market_data/public_data_provider.py` | 주식 일봉과 벤치마크 데이터를 캐시하고, 공공데이터 갱신 시점인 KST 평일 13:10 기준으로 만료 시간을 계산합니다. |
+| 데이터 상태 표시 | `market_data/types.py`, `public_data_provider.py` | 데이터 상태를 `fresh`, `partial`, `stale`, `unavailable`로 구분해 전략 평가와 발표 후 결과에서 사용합니다. |
+| 발표 후 결과 설명 | `calendar_post_result.py`, `tests/test_calendar_post_result.py` | 실적 수치, 발표 후 주가 반응, 해설을 분리하고, 데이터가 부족하면 `partial` 또는 `unavailable` 상태로 설명합니다. |
+| Gemini rate limit 처리 | `main.py` | 캘린더 인사이트 생성 중 `429` 또는 `TooManyRequests`가 발생하면 HTTP 429로 분리해 반환합니다. |
+
+## 6\. 주요 오픈 API 상세 명세
 
 ### (1) 🤖 AI 금융 멘토 (`POST /api/chat`)
 
   - **설명:** 사용자의 질문에 대해 경제 용어 사전 검색 후, 없으면 AI가 답변합니다.
+  - **안전 규칙:** `llm_guardrails.py`의 공통 규칙을 적용해 특정 종목 매수/매도 지시, 수익 보장 표현을 제한합니다.
   - **Request:**
 
 <!-- end list -->
@@ -264,6 +294,10 @@ uvicorn main:app --reload --port 8000
 ### (2) 🌤️ 뉴스 시장 날씨 (`GET /api/news-weather`) **(NEW)**
 
   - **설명:** 네이버 뉴스를 분석해 시장 분위기(Sunny/Cloudy 등)와 뉴스 카드 4개를 반환합니다. (50분 캐시 적용)
+  - **운영 보완:** 결과는 50분 동안 인메모리 캐시되어 반복 호출 시 Naver/Gemini API 호출을 줄입니다.
+  - **AI 실패 대응:** Gemini 호출 한도나 모델 오류가 발생해도 원문 뉴스 기반 fallback 카드를 반환합니다.
+  - **안전 규칙:** 공통 LLM 가드레일을 적용해 매수/매도 추천, 수익 보장, 출처 없는 최신 사실 생성을 제한합니다.
+  - **검증:** `tests/test_news_weather.py`에서 Gemini 실패 시 fallback 카드가 반환되는지 확인합니다.
   - **Response:**
 
 <!-- end list -->
@@ -308,6 +342,7 @@ uvicorn main:app --reload --port 8000
 ### (4) 💡 도미노 AI 인사이트 (`GET /api/macro-insight`) **(NEW)**
 
   - **설명:** 위 차트 데이터를 보고 AI가 분석한 한 줄 코멘트를 반환합니다.
+  - **안전 규칙:** 공통 LLM 가드레일을 적용해 거시경제 해석이 직접적인 투자 지시로 바뀌지 않도록 제한합니다.
   - **Response:**
 
 <!-- end list -->
@@ -363,6 +398,8 @@ uvicorn main:app --reload --port 8000
 ### (7) 🗓️ DART 경제 이벤트 캘린더 (`GET /api/calendar/earnings-demo`)
 
   - **설명:** DART API에서 최근 30일~향후 30일 범위의 실적 발표 공시와 실적 관련 IR 공시만 가져와 프론트엔드 캘린더 이벤트 형식으로 반환합니다. `DART_API_KEY`가 없으면 기존 `data/earnings_events.json` 정적 파일로 폴백합니다.
+  - **운영 보완:** DART 조회 결과는 24시간 캐시하며, API 키가 없거나 조회가 어려운 경우 `data/earnings_events.json` 정적 데이터로 fallback합니다.
+  - **데이터 선별:** 일반 IR을 그대로 노출하지 않고, 실적 공시와 실적 관련 IR 일정만 남깁니다.
   - **Response:**
 
 <!-- end list -->
@@ -390,6 +427,8 @@ uvicorn main:app --reload --port 8000
 ### (8) 💬 캘린더 이벤트 AI 해설 (`POST /api/calendar/insight`)
 
   - **설명:** 프론트엔드에서 캘린더 이벤트를 클릭했을 때 이벤트 정보를 보내면, Gemini가 투자자가 확인할 포인트를 짧게 해설합니다.
+  - **안전 규칙:** 공통 LLM 가드레일을 적용하며, 검색 도구를 제외해 검증되지 않은 최신 사실 생성을 줄입니다.
+  - **오류 처리:** Gemini 호출 한도 초과 시 HTTP 429로 반환합니다.
   - **Request:**
 
 <!-- end list -->
@@ -417,6 +456,7 @@ uvicorn main:app --reload --port 8000
 ### (9) 📌 캘린더 발표 후 결과 (`POST /api/calendar/post-result`)
 
   - **설명:** 캘린더 이벤트를 기준으로 OpenDART 공시 원문에서 매출, 영업이익, 순이익을 추출하고, 공공데이터포털 일봉으로 발표일/D+1 주가 반응을 계산합니다. 실적 수치와 주가 반응은 가능한 범위만 `available`, `partial`, `unavailable` 상태로 반환됩니다.
+  - **상태 관리:** 실적 수치와 주가 데이터가 모두 있으면 `available`, 일부만 있으면 `partial`, 부족하면 `unavailable`로 분리해 반환합니다.
   - **필요 키:** `DART_API_KEY`, `DATA_GO_KR_SERVICE_KEY`
   - **Request:**
 
@@ -501,7 +541,7 @@ uvicorn main:app --reload --port 8000
 
   - **설명:** `/strategies`에서 선택한 평가 스냅샷을 기반으로 계획을 저장, 조회, 수정, 삭제합니다. 주요 엔드포인트는 `GET/POST /api/planner/plans`, `GET/PUT/DELETE /api/planner/plans/{plan_id}`입니다.
 
-## 6\. 프론트엔드 연동 시 주의사항
+## 7\. 프론트엔드 연동 시 주의사항
 
 1.  **CORS 설정:**
 
@@ -518,7 +558,7 @@ uvicorn main:app --reload --port 8000
 
       - `news-weather`나 `chat` API는 AI가 생성하는 시간이 필요하므로(약 1\~3초), 프론트엔드에서 **스피너(Loading Spinner)** 처리가 필수입니다.
 
-## 7\. 트러블슈팅 (자주 묻는 질문)
+## 8\. 트러블슈팅 (자주 묻는 질문)
 
   - **Q. "RuntimeError: GEMINI\_API\_KEY..." 에러가 떠요.**
 
@@ -528,6 +568,10 @@ uvicorn main:app --reload --port 8000
 
       - A. 최초 실행 시 뉴스를 크롤링하고 AI가 요약하느라 약 3\~5초 소요될 수 있습니다. 이후 50분간은 캐시(저장된 값)를 반환하므로 빠릅니다.
 
+  - **Q. 뉴스 시장 날씨에서 AI 요약 대신 원문 뉴스 카드가 보여요.**
+
+      - A. Gemini 호출 한도, 모델 오류, JSON 파싱 오류 등이 발생하면 원문 뉴스 기반 fallback 카드가 표시됩니다. 이 경우에도 뉴스 제목, 요약, 링크는 유지됩니다.
+
   - **Q. ECOS 데이터가 비어있어요.**
 
       - A. 한국은행 API는 하루 호출 제한(약 2만 회)이 있거나, 인증키가 만료되었을 수 있습니다. 로그를 확인해 주세요.
@@ -535,6 +579,18 @@ uvicorn main:app --reload --port 8000
   - **Q. `/api/calendar/dart-debug` 결과가 비어있어요.**
 
       - A. 조회 기간에 해당 공시가 없거나, `pblntf_ty` 값이 맞지 않을 수 있습니다. 기업설명회(IR)는 `pblntf_ty=I`, 주요사항보고 계열은 `pblntf_ty=B`로 확인해 보세요.
+
+  - **Q. DART 일정이 실시간 데이터가 아닌 것처럼 보여요.**
+
+      - A. `DART_API_KEY`가 없거나 DART 조회가 정상적으로 되지 않는 경우, 백엔드는 데모 흐름 유지를 위해 `data/earnings_events.json` 정적 데이터를 반환할 수 있습니다.
+
+  - **Q. 캘린더 이벤트 AI 해설에서 429 오류가 떠요.**
+
+      - A. Gemini API 호출 한도 또는 무료 티어 제한에 걸린 상태입니다. 백엔드는 이 상황을 일반 500 오류가 아니라 429로 구분해 반환합니다.
+
+  - **Q. 전략 평가나 발표 후 주가 반응이 unavailable로 나와요.**
+
+      - A. `DATA_GO_KR_SERVICE_KEY`가 없거나 공공데이터포털 응답에 필요한 일봉 데이터가 없을 때 발생합니다. 이 경우 응답은 실패로 숨기지 않고 `unavailable` 또는 `partial` 상태와 이유를 함께 제공합니다.
 
 -----
 
